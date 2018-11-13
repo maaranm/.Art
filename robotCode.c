@@ -10,13 +10,11 @@ const tSensors Y_LIMIT_SWITCH = S1;
 const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 
+#include "PC_FleIO.c"
+
 float calculateRPM();
 
 int timeToNextPoint();
-
-void zeroAllAxis(){
-	zeroAxis
-}
 
 void zeroAxis(int axis){ //0 = x , 1 = y , 2 = z
 	if(axis == 0){
@@ -37,12 +35,18 @@ void zeroAxis(int axis){ //0 = x , 1 = y , 2 = z
 	}
 }
 
+void zeroAllAxis(){
+	zeroAxis(2); //z axis lifts pen
+	zeroAxis(0); //x axis zeroes
+	zeroAxis(1); //y axis zeroes
+}
+
 void adjustPenSpeed();
 
 int calculatePID();
 
 void readNextLine(){
-	
+
 }
 
 void stopMovement();
@@ -55,7 +59,12 @@ void scan();
 
 task main()
 {
+	TFileHandle fin;
+	if (!openReadPC(fin, "pointFile.txt" ){
+		;
+	}
 
+	zeroAllAxis();
 
 
 }
