@@ -12,7 +12,10 @@ const int tSensors SCANNER_SENSOR = S4;
 
 float calculateRPM();
 
-int timeToNextPoint();
+int timeToNextPoint()
+{
+
+}
 
 void zeroAllAxis();
 
