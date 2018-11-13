@@ -10,9 +10,12 @@ const tSensors Y_LIMIT_SWITCH = S1;
 const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 
-float lastError = 0;
+float lastError = 0; //used by PID function
+float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 
-float calculateRPM(){
+float calculateRPM(tMotor motorInterest){
+	int currentEncVal = nMotorEncoder[motorInterest];
+	int deltaEnc = currentEncVal - lastEncVal;
 }
 
 int timeToNextPoint();
