@@ -25,7 +25,7 @@ void zeroAllAxis();
 
 void zeroAxis();
 
-void adjustPenSpeed(bool* points) {
+void adjustPenSpeed(bool* points, int* speeds) {
 	int distanceToNextPoint = 0;
 
 	for (int currentPoint = 0; currentPoint < POINTS_PER_LINE; currentPoint += distanceToNextPoint) {
@@ -35,7 +35,7 @@ void adjustPenSpeed(bool* points) {
 		int speed = 360 / timeToNextPoint;
 
 		for (int pointToSet = currentPoint; pointToSet < currentPoint+distanceToNextPoint; pointToSet++)
-			points[pointToSet] = speed;
+			speeds[pointToSet] = speed;
 	}
 }
 
