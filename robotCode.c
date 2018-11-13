@@ -32,8 +32,14 @@ void zeroAllAxis();
 void zeroAxis();
 
 void adjustPenSpeed(bool* points, int* speeds) {
+	// Large EV3 motor has max 160-175 rpm --> Let's assume that 100 power is 165 rpm (990 degrees/sec)
+	// Also assume that power and rpm are linearly related
+	// Therefore, every additional power is 9.9degrees/second
+	// Therefore, the conversion factor from degrees/second to power is 1/9.9;desured degrees/second divided by 9.9
+	const float DEG_PER_SEC_TO_POWER = 1/9.9;
+
 	// distanceToNextPoint is in mm
-	// speed is in degrees per second
+	// speed is in degrees per second and then converted using above conversion factor
 	int distanceToNextPoint = 0, speed = 0;
 
 	for (int currentPoint = 0; currentPoint < POINTS_PER_LINE; currentPoint += distanceToNextPoint) {
@@ -42,7 +48,7 @@ void adjustPenSpeed(bool* points, int* speeds) {
 		if (distanceToNextPoint != -1)
 		{
 			int timeToNextPoint = distanceToNextPoint*POINT_DISTANCE / X_SPEED;
-			speed = 360 / timeToNextPoint;
+			speed = (int)((360 / timeToNextPoint)*DEG_PER_SEC_TO_POWER);
 		}
 		else
 		{
