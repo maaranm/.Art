@@ -14,7 +14,9 @@ float calculateRPM();
 
 int timeToNextPoint();
 
-void zeroAllAxis();
+void zeroAllAxis(){
+	
+}
 
 void zeroAxis();
 
