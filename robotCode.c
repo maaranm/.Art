@@ -59,10 +59,16 @@ int calculatePID();
 
 void readNextLine();
 
+float fmod(float dividend, float divisor) {
+	return dividend - ((int)(dividend/divisor))*divisor;
+}
+
 void stopMovement()
 {
+	const float TOL = 0.000001;
+
 	// wait until we reach the place in the array
-	while();
+	while(fmod(time1[T2], (1.0*X_SPEED)) >= TOL);
 	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
 }
 
