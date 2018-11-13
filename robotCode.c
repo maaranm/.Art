@@ -2,6 +2,7 @@ const int X_SPEED=20; //mm/s
 const int AXIS_STEP = 2; //mm
 const int MAX_X = 224; //mm
 const int MAX_Y = 224; //mm
+const int POINTS_PER_LINE = 80;
 const tMotor X_AXIS = motorD;
 const tMotor Y_AXIS = motorA;
 const tMotor Z_AXIS = motorC;
@@ -10,7 +11,7 @@ const tSensors Y_LIMIT_SWITCH = S1;
 const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 
-#include "PC_FleIO.c"
+#include "PC_FileIO.c"
 
 float calculateRPM();
 
@@ -45,8 +46,12 @@ void adjustPenSpeed();
 
 int calculatePID();
 
-void readNextLine(){
-
+void readNextLine(TFileHandle fin, bool* points){
+	int integerIn;
+	for (int index = 0; index < POINTS_PER_LINE; index++){
+		readIntPC(fin, integerIn);
+		points[index] = (integerIn == 1);
+	}
 }
 
 void stopMovement();
@@ -60,11 +65,12 @@ void scan();
 task main()
 {
 	TFileHandle fin;
-	if (!openReadPC(fin, "pointFile.txt" ){
-		;
+	bool points[POINTS_PER_LINE];
+
+	if (!openReadPC(fin, "pointFile.txt" )){
+		displayString(2, "Could not open point file.");
 	}
-
 	zeroAllAxis();
-
+	readNextLine(fin, points);
 
 }
