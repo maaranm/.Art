@@ -16,6 +16,11 @@ float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 float calculateRPM(tMotor motorInterest){
 	int currentEncVal = nMotorEncoder[motorInterest];
 	int deltaEnc = currentEncVal - lastEncVal;
+	int deltaTime = time1[T1] - lastTimeVal;
+	float seconds = deltaTime / 1000.0;
+	float rotations = deltaEnc / 360.0;
+	float rpm = rotations / (seconds/60);
+	return rpm;
 }
 
 int timeToNextPoint();
