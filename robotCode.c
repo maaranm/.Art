@@ -1,9 +1,9 @@
 
 const int POINTS_PER_LINE = 80;
-const int X_SPEED=20; //mm/s
-const int AXIS_STEP = 2; //mm
-const int MAX_X = 224; //mm
-const int MAX_Y = 224; //mm
+const int X_SPEED=20; // mm/s
+const int AXIS_STEP = 2; // mm
+const int MAX_X = 224; // mm
+const int MAX_Y = 224; // mm
 const int POINT_DISTANCE = MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const tMotor X_AXIS = motorD;
 const tMotor Y_AXIS = motorA;
@@ -48,7 +48,7 @@ void adjustPenSpeed(bool* points, int* speeds) {
 		if (distanceToNextPoint != -1)
 		{
 			int timeToNextPoint = distanceToNextPoint*POINT_DISTANCE / X_SPEED;
-			speed = (int)((360 / timeToNextPoint)*DEG_PER_SEC_TO_POWER);
+			speed = (int)((90 / timeToNextPoint)*DEG_PER_SEC_TO_POWER);
 		}
 		else
 		{
