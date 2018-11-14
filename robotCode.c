@@ -28,7 +28,10 @@ void stopMovement();
 
 void moveYAxis();
 
-void pause();
+void pause()
+{
+	
+}
 
 void scan();
 
