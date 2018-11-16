@@ -53,13 +53,13 @@ void zeroAllAxis(){
 	zeroAxis(1); //y axis zeroes
 }
 
-void adjustPenSpeed(bool* points, int* speeds) {
-	// Large EV3 motor has max 240-250 rpm --> Let's assume that 100 power is 245 rpm (1470 degrees/sec)
-	// Also assume that power and rpm are linearly related
-	// Therefore, every additional power is 14.7degrees/second
-	// Therefore, the conversion factor from degrees/second to power is 1/14.7; desired degrees/second divided by 14.7
-	const float DEG_PER_SEC_TO_POWER = 1/14.7;
+int calcZAxisMotorPower(float rpm) {
+	// based on a linear trendline to convert rpm to motor power
+	// trendline uses 11 data points (motor power from 0 to 100 in increments of 10 and associated rpm)
+	return 0.3838*rpm-0.9373;
+}
 
+void adjustPenSpeed(bool* points, int* speeds) {
 	// distanceToNextPoint is in mm
 	// speed is in degrees per second and then converted using above conversion factor
 	int distanceToNextPoint = 0, speed = 0;
@@ -67,17 +67,23 @@ void adjustPenSpeed(bool* points, int* speeds) {
 	for (int currentPoint = 0; currentPoint < POINTS_PER_LINE; currentPoint += distanceToNextPoint) {
 		distanceToNextPoint = getDistanceToNextPoint(points, currentPoint);
 
+		// if we still have another point to plot
 		if (distanceToNextPoint != -1)
 		{
-			float timeToNextPoint = distanceToNextPoint*POINT_DISTANCE / X_SPEED;
-			speed = (int)((90 / timeToNextPoint)*DEG_PER_SEC_TO_POWER);
+			// time to next point is minutes
+			float timeToNextPoint = distanceToNextPoint*POINT_DISTANCE / X_SPEED / 60.0;
+			// convert rpm to motor power using linear model
+			// we only want to travel 1/4 of a revolution so that the marker strike is quick and the in between movement is slow
+			speed = calcZAxisMotorPower(0.25 / timeToNextPoint);
 		}
+		// if we dont, fill the rest of the array with 0
 		else
 		{
 			speed = 0;
 			distanceToNextPoint = POINTS_PER_LINE-currentPoint;
 		}
 
+		// fill the speed area until the next point with our desired speed
 		for (int pointToSet = currentPoint; pointToSet < currentPoint+distanceToNextPoint; pointToSet++)
 			speeds[pointToSet] = speed;
 	}
