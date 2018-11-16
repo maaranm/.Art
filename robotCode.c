@@ -1,8 +1,8 @@
 const int POINTS_PER_LINE = 80;
-const int X_SPEED=20; // mm/s
-const int AXIS_STEP = 2; // mm
-const int MAX_X = 224; // mm
-const int MAX_Y = 224; // mm
+const float X_SPEED=20; // mm/s
+const float AXIS_STEP = 2; // mm
+const float MAX_X = 224; // mm
+const float MAX_Y = 224; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const tMotor X_AXIS = motorD;
 const tMotor Y_AXIS = motorA;
@@ -54,11 +54,11 @@ void zeroAllAxis(){
 }
 
 void adjustPenSpeed(bool* points, int* speeds) {
-	// Large EV3 motor has max 160-175 rpm --> Let's assume that 100 power is 165 rpm (990 degrees/sec)
+	// Large EV3 motor has max 240-250 rpm --> Let's assume that 100 power is 245 rpm (1470 degrees/sec)
 	// Also assume that power and rpm are linearly related
-	// Therefore, every additional power is 9.9degrees/second
-	// Therefore, the conversion factor from degrees/second to power is 1/9.9;desured degrees/second divided by 9.9
-	const float DEG_PER_SEC_TO_POWER = 1/9.9;
+	// Therefore, every additional power is 14.7degrees/second
+	// Therefore, the conversion factor from degrees/second to power is 1/14.7; desired degrees/second divided by 14.7
+	const float DEG_PER_SEC_TO_POWER = 1/14.7;
 
 	// distanceToNextPoint is in mm
 	// speed is in degrees per second and then converted using above conversion factor
@@ -124,5 +124,30 @@ task main()
 	zeroAllAxis();
 	readNextLine(fin, points);
 
+
+	TFileHandle fout;
+	openWritePC(fout, "rpmMeasurements.txt");
+
+	for (int i = 100; i <= 100; i += 10)
+	{
+		nMotorEncoder[Z_AXIS] = 0;
+		time1[T1] = 0;
+		motor[Z_AXIS] = i;
+		displayString(1, "Set Motor");
+		wait1Msec(30000);
+		float time = time1[T1];
+		float encoder = nMotorEncoder[Z_AXIS];
+		displayString(2, "Recorded Data");
+		motor[Z_AXIS] = 0;
+		encoder /= 360;
+		time /= 1000;
+		time /= 60;
+		float rpm = encoder/time;
+		writeFloatPC(fout, rpm);
+		writeCharPC(fout, ' ');
+		displayString(3, "Calculated rpm");
+		wait1Msec(1000);
+		eraseDisplay();
+	}
 
 }
