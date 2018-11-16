@@ -3,7 +3,7 @@ const int X_SPEED=20; // mm/s
 const int AXIS_STEP = 2; // mm
 const int MAX_X = 224; // mm
 const int MAX_Y = 224; // mm
-const int POINT_DISTANCE = MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
+const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const tMotor X_AXIS = motorD;
 const tMotor Y_AXIS = motorA;
 const tMotor Z_AXIS = motorC;
@@ -35,7 +35,7 @@ void zeroAxis(int axis){ //0 = x , 1 = y , 2 = z
 		motor[X_AXIS] = 0;
 		nMotorEncoder[X_AXIS] = 0;
 	} else if (axis == 1){
-		motor[Y_AXIS] = 100;
+		motor[Y_AXIS] = -100;
 		while (!SensorValue[Y_LIMIT_SWITCH]);
 		motor[Y_AXIS] = 0;
 		nMotorEncoder[Y_AXIS] = 0;
@@ -69,7 +69,7 @@ void adjustPenSpeed(bool* points, int* speeds) {
 
 		if (distanceToNextPoint != -1)
 		{
-			int timeToNextPoint = distanceToNextPoint*POINT_DISTANCE / X_SPEED;
+			float timeToNextPoint = distanceToNextPoint*POINT_DISTANCE / X_SPEED;
 			speed = (int)((90 / timeToNextPoint)*DEG_PER_SEC_TO_POWER);
 		}
 		else
@@ -116,11 +116,13 @@ task main()
 {
 	TFileHandle fin;
 	bool points[POINTS_PER_LINE];
+	int speeds[POINTS_PER_LINE];
 
 	if (!openReadPC(fin, "pointFile.txt" )){
 		displayString(2, "Could not open point file.");
 	}
 	zeroAllAxis();
 	readNextLine(fin, points);
+
 
 }
