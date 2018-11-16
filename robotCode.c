@@ -130,30 +130,5 @@ task main()
 	zeroAllAxis();
 	readNextLine(fin, points);
 
-
-	TFileHandle fout;
-	openWritePC(fout, "rpmMeasurements.txt");
-
-	for (int i = 100; i <= 100; i += 10)
-	{
-		nMotorEncoder[Z_AXIS] = 0;
-		time1[T1] = 0;
-		motor[Z_AXIS] = i;
-		displayString(1, "Set Motor");
-		wait1Msec(30000);
-		float time = time1[T1];
-		float encoder = nMotorEncoder[Z_AXIS];
-		displayString(2, "Recorded Data");
-		motor[Z_AXIS] = 0;
-		encoder /= 360;
-		time /= 1000;
-		time /= 60;
-		float rpm = encoder/time;
-		writeFloatPC(fout, rpm);
-		writeCharPC(fout, ' ');
-		displayString(3, "Calculated rpm");
-		wait1Msec(1000);
-		eraseDisplay();
-	}
-
+	adjustPenSpeed(points, speeds);
 }
