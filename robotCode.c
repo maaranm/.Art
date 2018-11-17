@@ -1,9 +1,3 @@
-const int POINTS_PER_LINE = 80;
-const float X_SPEED=20; // mm/s
-const float AXIS_STEP = 2; // mm
-const float MAX_X = 224; // mm
-const float MAX_Y = 224; // mm
-const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const tMotor X_AXIS = motorD;
 const tMotor Y_AXIS = motorA;
 const tMotor Z_AXIS = motorC;
@@ -11,6 +5,17 @@ const tSensors X_LIMIT_SWITCH = S2;
 const tSensors Y_LIMIT_SWITCH = S1;
 const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
+const int PAUSE_BUTTON = (int)buttonEnter;
+
+const int POINTS_PER_LINE = 80;
+const float X_SPEED = 20; // mm/s
+const float AXIS_STEP = 2; // mm
+const float MAX_X = 224; // mm
+const float MAX_Y = 224; // mm
+const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
+const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
+
+enum Axes {X, Y, Z};
 
 #include "PC_FileIO.c"
 
@@ -29,18 +34,22 @@ int getDistanceToNextPoint(bool* points, int currentPoint) {
 }
 
 void zeroAxis(int axis){ //0 = x , 1 = y , 2 = z
-	if(axis == 0){
+	if(axis == (int)X){
 		motor[X_AXIS] = -25;
 		while (!SensorValue[X_LIMIT_SWITCH]);
 		motor[X_AXIS] = 0;
 		nMotorEncoder[X_AXIS] = 0;
-	} else if (axis == 1){
+	} else if (axis == (int)Y){
 		motor[Y_AXIS] = -100;
 		while (!SensorValue[Y_LIMIT_SWITCH]);
 		motor[Y_AXIS] = 0;
 		nMotorEncoder[Y_AXIS] = 0;
 	} else {
-		motor[Z_AXIS] = 50;
+		// check which direction to zero the z axis in (so we don't plot a point accidentally)
+		if(nMotorEncoder[Z_AXIS]%360 < 180)
+			motor[Z_AXIS] = -50;
+		else
+			motor[Z_AXIS] = 50;
 		while (!SensorValue[Z_LIMIT_SWITCH]);
 		motor[Z_AXIS] = 0;
 		nMotorEncoder[Z_AXIS] = 0;
@@ -48,9 +57,9 @@ void zeroAxis(int axis){ //0 = x , 1 = y , 2 = z
 }
 
 void zeroAllAxis(){
-	zeroAxis(2); //z axis lifts pen
-	zeroAxis(0); //x axis zeroes
-	zeroAxis(1); //y axis zeroes
+	zeroAxis(Z); //z axis lifts pen
+	zeroAxis(X); //x axis zeroes
+	zeroAxis(Y); //y axis zeroes
 }
 
 int calcZAxisMotorPower(float rpm) {
@@ -71,7 +80,7 @@ void adjustPenSpeed(bool* points, int* speeds) {
 		if (distanceToNextPoint != -1)
 		{
 			// time to next point is minutes
-			float timeToNextPoint = distanceToNextPoint*POINT_DISTANCE / X_SPEED / 60.0;
+			float timeToNextPoint = distanceToNextPoint*TIME_BETWEEN_POINTS / 60.0;
 			// convert rpm to motor power using linear model
 			// we only want to travel 1/4 of a revolution so that the marker strike is quick and the in between movement is slow
 			speed = calcZAxisMotorPower(0.25 / timeToNextPoint);
@@ -105,30 +114,93 @@ float fmod(float dividend, float divisor) {
 
 void stopMovement()
 {
-	const float TOL = 0.000001;
-
-	// wait until we reach the place in the array
-	while(fmod(time1[T2], (1.0*X_SPEED)) >= TOL);
 	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
 }
 
-void moveYAxis();
+void moveYAxis(){}
 
-void pause();
+void pause(){}
 
-void scan();
+void scan(){}
 
 task main()
 {
-	TFileHandle fin;
-	bool points[POINTS_PER_LINE];
-	int speeds[POINTS_PER_LINE];
+	// display message telling them to select image on PC then transfer file
+	displayString(1, "Please select image on PC");
+	displayString(2, "then transfer file to EV3");
+	displayString(12, "Press enter to continue");
+	while(!getButtonPress(buttonEnter));
+	while(getButtonPress(buttonEnter));
+	eraseDisplay();
 
+	// confirmation screen that they have uploaded the image they want
+	displayString(1, "If the correct imge is uploaded");
+	displayString(2, "press enter to start the plot");
+	while(!getButtonPress(buttonEnter));
+	while(getButtonPress(buttonEnter));
+	eraseDisplay();
+
+	// open file now that user has confirmed it is correct file
+	TFileHandle fin;
+
+	// check that file exists
 	if (!openReadPC(fin, "pointFile.txt" )){
 		displayString(2, "Could not open point file.");
 	}
-	zeroAllAxis();
-	readNextLine(fin, points);
+	else
+	{
+		// get the number of rows we are plotting from the file
+		int rowsToPlot = 0;
+		readIntPC(fin, rowsToPlot);
 
-	adjustPenSpeed(points, speeds);
+		// declare two parallel arrays to store whether or not we plot a respective point and to store the speed of the z axis at each point
+		bool points[POINTS_PER_LINE];
+		int speeds[POINTS_PER_LINE];
+
+		// start plotting the points
+		zeroAllAxis();
+		time1[T1] = 0;
+		for(int rowNumber = 0; rowNumber < rowsToPlot; rowNumber++) {
+			// read next line of image to plot
+			readNextLine(fin, points);
+			// calculates the speeds of the z axis for the given row
+			adjustPenSpeed(points, speeds);
+			// zero encoder on z axis so we can zero pen properly
+			nMotorEncoder[Z_AXIS] = 0;
+			// zero timer so we know when to plot each point
+			time1[T2] = 0;
+
+
+			// set x axis to constant speed -- changes directions based on odd or even row
+
+			for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
+				if(getButtonPress(PAUSE_BUTTON))
+					pause();
+
+				// zero time to do the actual pen stroke
+				time1[T3] = 0;
+
+				// plot the point if we should
+				if (points[pointNumber])
+				{
+					motor[Z_AXIS] = 100;
+					while(SensorValue[Z_LIMIT_SWITCH] == 0);
+				}
+				// set the z axis to its desired speed between points
+				motor[Z_AXIS] = speeds[pointNumber];
+				// wait until we reach the next "point"
+				wait1Msec((int)(TIME_BETWEEN_POINTS*1000 - time1[T3]));
+			}
+
+			// zero z axis
+			zeroAxis((int)Z);
+
+			// move y axis to next row
+			// do not do this if we are on the last line
+			if (rowNumber < POINTS_PER_LINE-1)
+				moveYAxis();
+		}
+
+		scan();
+	}
 }
