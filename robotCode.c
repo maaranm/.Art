@@ -10,7 +10,7 @@ const tSensors Y_LIMIT_SWITCH = S1;
 const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 
-float lastError = 0, target = 200, kp = 12, kd = 1; //used by PID function
+float lastError = 0, target = 0, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
 float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 
 int pidOutput = 0;
@@ -28,7 +28,10 @@ float calculateRPM(tMotor motorInterest){
 }
 
 void setXRPM(float rpm){
-	int power = (rpm*0.0717)-2.593;
+	int offset = 3.9229;
+	if(rpm>=0)
+		offset = - 3.284;
+	int power = (rpm*0.7061 + offset;
 	motor[X_AXIS] = power;
 }
 
@@ -42,15 +45,18 @@ void setXRPM(float rpm){
 //void adjustPenSpeed();
 
 task calculatePID(){
-	float curVal = calculateRPM(X_AXIS);
-	float error = target-curVal;
-	int outputPow = error*kp + lastError*kd;
-	displayString(3, "Power = %d", outputPow);
-	displayString(4, "Error = %f", error);
-	lastError = error;
-	pidOutput = outputPow;
-	setXRPM(target);
-	wait1Msec(20);
+	while(true){
+		float curVal = calculateRPM(X_AXIS);
+		float error = target-curVal;
+		int outputPow = 0;
+		outputPow = error*kpF + lastError*kdF;
+		displayString(3, "Power = %d", outputPow);
+		displayString(4, "Error = %f", error);
+		lastError = error;
+		pidOutput = outputPow;
+		setXRPM(outputPow);
+		wait1Msec(10);
+	}
 }
 
 //void readNextLine();
@@ -68,19 +74,19 @@ task main()
 	eraseDisplay();
 	nMotorEncoder[X_AXIS] = 0;
 	while(true){
-		target = 200;
+		target = 60;
+		wait1Msec(100);
+		startTask(calculatePID);
 		while(nMotorEncoder[X_AXIS]<1000){
-			wait1Msec(100);
-			startTask(calculatePID);
 		}
 		stopTask(calculatePID);
 		lastEncVal = 0;
 		lastTimeVal = 0;
 		eraseDisplay();
-		target = -200;
+		target = -60;
+		wait1Msec(100);
+		startTask(calculatePID);
 		while(nMotorEncoder[X_AXIS] > 0){
-			wait1Msec(100);
-			startTask(calculatePID);
 		}
 		stopTask(calculatePID);
 	}
