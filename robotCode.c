@@ -202,5 +202,11 @@ task main()
 		}
 
 		scan();
+
+		displayString(1, "Accuracy: %f", 0.82);
+		displayString(12, "Press enter to continue");
+		while(!getButtonPress(buttonEnter));
+		while(getButtonPress(buttonEnter));
+		eraseDisplay();
 	}
 }
