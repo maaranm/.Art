@@ -1,15 +1,21 @@
-const int X_SPEED=20; //mm/s
-const int AXIS_STEP = 2; //mm
-const int MAX_X = 224; //mm
-const int MAX_Y = 224; //mm
+const int POINTS_PER_LINE = 81;
+const int X_SPEED=20; // mm/s
+const int AXIS_STEP = 2; // mm
+const int MAX_X = 224; // mm
+const int MAX_Y = 224; // mm
+const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const tMotor X_AXIS = motorD;
-const int tMotor Y_AXIS = motorA;
-const int tMotor Z_AXIS = motorC;
-const int tSensors X_LIMIT_SWITCH = S2;
-const int tSensors Y_LIMIT_SWITCH = S1;
-const int tSensors Z_LIMIT_SWITCH = S3;
-const int tSensors SCANNER_SENSOR = S4;
+const tMotor Y_AXIS = motorA;
+const tMotor Z_AXIS = motorC;
+const tSensors X_LIMIT_SWITCH = S2;
+const tSensors Y_LIMIT_SWITCH = S1;
+const tSensors Z_LIMIT_SWITCH = S3;
+const tSensors SCANNER_SENSOR = S4;
+const int SCAN_NXN = 3;
+const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
+const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
 bool isPaused = true;
+
 
 float calculateRPM();
 
@@ -47,7 +53,7 @@ void moveYAxis(int distance)
 	motor[Y_AXIS]= hault;
 }
 
-void moveXAxisDist (int distance)
+void moveXAxis (int distance)
 {
 	const float PINION_CIRC = 25.44;
 	const float ENC_LIMIT = (distance/100.0)*180/PINION_CIRC;
@@ -67,8 +73,6 @@ void moveXAxisDist (int distance)
 	motor[X_AXIS]= hault;
 }
 
-
-
 void pause()
 {
 	if (isPaused == false)
@@ -76,7 +80,41 @@ void pause()
 	isPaused = !isPaused;
 }
 
-void scan();
+
+
+int scanArray[SCAN_MATRIX][SCAN_MATRIX];
+
+void scan(int*scanArray);
+{
+	for (int initialize= 0; initialize < SCAN_MATRIX*SCAN_MATRIX; initialize++)
+	{
+		scanArray[initialize] = 0 ;
+	}
+
+	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
+	SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
+	zeroAllAxis();
+	moveXAxis(POINT_DISTANCE);
+	moveYAxis(POINT_DISTANCE);
+
+	int arrayIndex = 0;
+	for (int scanY = 0 ; scanY < SCAN_MATRIX; scanY++ && arrayIndex++ )
+	{
+		for (int scanX = 0; scanX < SCAN_MATRIX; scanX ++ && arrayIndex++)
+		{
+			scanArray[arrayIndex] = SensorValue[SCANNER_SENSOR];
+			moveXAxis(SCAN_STEP);
+		}
+		moveYAxis(SCAN_STEP);
+	}
+	zeroAllAxis();
+}
+
+
+
+
+
+
 
 task main()
 {
