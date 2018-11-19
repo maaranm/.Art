@@ -7,20 +7,19 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
+enum Axes {X, Y, Z};
+
 const int POINTS_PER_LINE = 40;
 const int X_SPEED=10; // mm/s
 const int AXIS_STEP = 2; // mm
 const int MAX_X = 160; // mm
 const int MAX_Y = 160; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
+const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
 
 const int SCAN_NXN = 3;
 const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
 const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
-
-const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
-
-enum Axes {X, Y, Z};
 
 float lastError = 0, target = X_SPEED*60/25.4, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
 float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
