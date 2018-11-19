@@ -156,11 +156,6 @@ float fmod(float dividend, float divisor) {
 	return dividend - ((int)(dividend/divisor))*divisor;
 }
 
-void stopMovement()
-{
-	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
-}
-
 void moveYAxis(int distance)
 {
 	const float WHEEL_DIA= 4.25;
@@ -201,11 +196,16 @@ void moveXAxis (int distance)
 	motor[X_AXIS]= hault;
 }
 
-void pause()
+void pause(int* speeds, int currentPoint)
 {
-	if (isPaused == false)
-		stopMovement();
-	isPaused = !isPaused;
+	// stop x axis stuff here
+	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
+
+	while(!getButtonPress(BUTTON_PAUSE));
+	while(getButtonPress(BUTTON_PAUSE));
+
+	motor[Z_AXIS] = speeds[currentPoint];
+	// start x axis stuff here
 }
 
 void scan(int*scanArray)
@@ -292,7 +292,7 @@ task main()
 			for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
 				displayString(5,"pointNum = %d", pointNumber);
 				if(getButtonPress(PAUSE_BUTTON))
-					pause();
+					pause(speeds, pointNumber);
 
 				// zero time to do the actual pen stroke
 				time1[T3] = 0;
