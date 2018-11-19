@@ -143,12 +143,15 @@ task calculatePID(){
 	}
 }
 
-void readNextLine(TFileHandle fin, bool* points){
+bool readNextLine(TFileHandle fin, bool* points){
+	bool hasPoint = false;
 	int integerIn;
 	for (int index = 0; index < POINTS_PER_LINE; index++){
 		readIntPC(fin, integerIn);
 		points[index] = (integerIn == 1);
+		hasPoint = points[index]
 	}
+	return hasPoint;
 }
 
 void moveYAxis(int distance)
@@ -277,7 +280,9 @@ task main()
 		for(int rowNumber = 0; rowNumber < rowsToPlot; rowNumber++) {
 			displayString(11,"Row Number = %d", rowNumber+1);
 			// read next line of image to plot
-			readNextLine(fin, points);
+			// if it is empty (no points to plot, it will return false) then step the y axis forward and read the next line
+			while(!readNextLine(fin, points))
+				moveYAxis(POINT_DISTANCE);
 			// calculates the speeds of the z axis for the given row
 			adjustPenSpeed(points, speeds);
 			// zero encoder on z axis so we can zero pen properly
