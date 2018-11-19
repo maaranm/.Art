@@ -1,3 +1,11 @@
+
+const int POINTS_PER_LINE = 81;
+const int X_SPEED=20; // mm/s
+const int AXIS_STEP = 2; // mm
+const int MAX_X = 224; // mm
+const int MAX_Y = 224; // mm
+const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
+
 const tMotor X_AXIS = motorD;
 const tMotor Y_AXIS = motorA;
 const tMotor Z_AXIS = motorC;
@@ -7,12 +15,11 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
-const int POINTS_PER_LINE = 60;
-const float X_SPEED = 20; // mm/s
-const float AXIS_STEP = 2; // mm
-const float MAX_X = 224; // mm
-const float MAX_Y = 224; // mm
-const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
+const int SCAN_NXN = 3;
+const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
+const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
+bool isPaused = true;
+
 const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
 
 enum Axes {X, Y, Z};
@@ -20,6 +27,8 @@ enum Axes {X, Y, Z};
 float lastError = 0, target = 0, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
 float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 int pidOutput = 0;
+
+int scanArray[SCAN_MATRIX][SCAN_MATRIX];
 
 #include "PC_FileIO.c"
 
@@ -39,7 +48,7 @@ void setXRPM(float rpm){
 	int offset = 3.9229;
 	if(rpm>=0)
 		offset = - 3.284;
-	int power = (rpm*0.7061 + offset;
+	int power = (rpm*0.7061 + offset);
 	motor[X_AXIS] = power;
 }
 
@@ -152,11 +161,78 @@ void stopMovement()
 	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
 }
 
-void moveYAxis(){}
+void moveYAxis(int distance)
+{
+	const float WHEEL_DIA= 4.25;
+	const float ENC_LIMIT= (distance/100.0)*180*25/(PI*WHEEL_DIA);
+	// geared down 25 to 1
+	int motorSpeed = 20;
+	int hault =0;
 
-void pause(){}
+	if (distance <0)
+		motorSpeed *= -1;
 
-void scan(){}
+	nMotorEncoder[Y_AXIS]=0;
+	motor[Y_AXIS]=motorSpeed;
+
+	while (nMotorEncoder[Y_AXIS] < ENC_LIMIT)
+	{}
+
+	motor[Y_AXIS]= hault;
+}
+
+void moveXAxis (int distance)
+{
+	const float PINION_CIRC = 25.44;
+	const float ENC_LIMIT = (distance/100.0)*180/PINION_CIRC;
+
+	int motorSpeed = 90;
+	int hault =0;
+
+	if (distance <0)
+		motorSpeed *= -1;
+
+	nMotorEncoder[X_AXIS]=0;
+	motor[X_AXIS]=motorSpeed;
+
+	while (nMotorEncoder[X_AXIS] < ENC_LIMIT)
+	{}
+
+	motor[X_AXIS]= hault;
+}
+
+void pause()
+{
+	if (isPaused == false)
+		stopMovement();
+	isPaused = !isPaused;
+}
+
+void scan(int*scanArray)
+{
+	for (int initialize= 0; initialize < SCAN_MATRIX*SCAN_MATRIX; initialize++)
+	{
+		scanArray[initialize] = 0 ;
+	}
+
+	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
+	SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
+	zeroAllAxis();
+	moveXAxis(POINT_DISTANCE);
+	moveYAxis(POINT_DISTANCE);
+
+	int arrayIndex = 0;
+	for (int scanY = 0 ; scanY < SCAN_MATRIX; scanY++ && arrayIndex++ )
+	{
+		for (int scanX = 0; scanX < SCAN_MATRIX; scanX ++ && arrayIndex++)
+		{
+			scanArray[arrayIndex] = SensorValue[SCANNER_SENSOR];
+			moveXAxis(SCAN_STEP);
+		}
+		moveYAxis(SCAN_STEP);
+	}
+	zeroAllAxis();
+}
 
 task main()
 {
@@ -177,7 +253,7 @@ task main()
 
 	// open file now that user has confirmed it is correct file
 	TFileHandle fin;
-	openReadPC(fin, "outputBro.txt" )
+	openReadPC(fin, "outputBro.txt" );
 	int rowsToPlot = 0;
 	// check that file exists and get the number of rows we are plotting from the file
 	if (!readIntPC(fin, rowsToPlot)){
@@ -241,9 +317,9 @@ task main()
 			// move y axis to next row
 			// do not do this if we are on the last line
 			if (rowNumber < POINTS_PER_LINE-1)
-				moveYAxis();
+				moveYAxis(AXIS_STEP);
 		}
-		scan();
+		scan(scanArray);
 
 		displayString(1, "Accuracy: %f", 0.82);
 		displayString(12, "Press enter to continue");
