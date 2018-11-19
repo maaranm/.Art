@@ -1,11 +1,3 @@
-
-const int POINTS_PER_LINE = 40;
-const int X_SPEED=10; // mm/s
-const int AXIS_STEP = 2; // mm
-const int MAX_X = 160; // mm
-const int MAX_Y = 224; // mm
-const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
-
 const tMotor X_AXIS = motorD;
 const tMotor Y_AXIS = motorA;
 const tMotor Z_AXIS = motorC;
@@ -15,10 +7,16 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
+const int POINTS_PER_LINE = 40;
+const int X_SPEED=10; // mm/s
+const int AXIS_STEP = 2; // mm
+const int MAX_X = 160; // mm
+const int MAX_Y = 160; // mm
+const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
+
 const int SCAN_NXN = 3;
 const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
 const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
-bool isPaused = true;
 
 const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
 
