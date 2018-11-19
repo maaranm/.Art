@@ -149,7 +149,7 @@ bool readNextLine(TFileHandle fin, bool* points){
 	for (int index = 0; index < POINTS_PER_LINE; index++){
 		readIntPC(fin, integerIn);
 		points[index] = (integerIn == 1);
-		hasPoint = points[index]
+		hasPoint = (hasPoint || points[index]);
 	}
 	return hasPoint;
 }
