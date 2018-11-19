@@ -1,3 +1,11 @@
+
+const int POINTS_PER_LINE = 81;
+const int X_SPEED=20; // mm/s
+const int AXIS_STEP = 2; // mm
+const int MAX_X = 224; // mm
+const int MAX_Y = 224; // mm
+const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
+
 const tMotor X_AXIS = motorD;
 const tMotor Y_AXIS = motorA;
 const tMotor Z_AXIS = motorC;
@@ -7,19 +15,42 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
-const int POINTS_PER_LINE = 80;
-const float X_SPEED = 20; // mm/s
-const float AXIS_STEP = 2; // mm
-const float MAX_X = 224; // mm
-const float MAX_Y = 224; // mm
-const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
+const int SCAN_NXN = 3;
+const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
+const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
+bool isPaused = true;
+
 const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
 
 enum Axes {X, Y, Z};
 
+float lastError = 0, target = 0, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
+float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
+int pidOutput = 0;
+
+int scanArray[SCAN_MATRIX][SCAN_MATRIX];
+
 #include "PC_FileIO.c"
 
-float calculateRPM();
+float calculateRPM(tMotor motorInterest){
+	int currentEncVal = nMotorEncoder[motorInterest];
+	int deltaEnc = currentEncVal - lastEncVal;
+	int deltaTime = time1[T1] - lastTimeVal;
+	float rotations = deltaEnc / 360.0;
+	float rpm = (rotations/deltaTime)*60000;
+	displayString(2, "RPM = %f", rpm);
+	lastEncVal = currentEncVal;
+	lastTimeVal = time1[T1];
+	return rpm;
+}
+
+void setXRPM(float rpm){
+	int offset = 3.9229;
+	if(rpm>=0)
+		offset = - 3.284;
+	int power = (rpm*0.7061 + offset);
+	motor[X_AXIS] = power;
+}
 
 int getDistanceToNextPoint(bool* points, int currentPoint) {
 	int nextPoint = 0;
@@ -98,7 +129,20 @@ void adjustPenSpeed(bool* points, int* speeds) {
 	}
 }
 
-int calculatePID();
+task calculatePID(){
+	while(true){
+		float curVal = calculateRPM(X_AXIS);
+		float error = target-curVal;
+		int outputPow = 0;
+		outputPow = error*kpF + lastError*kdF;
+		displayString(3, "Power = %d", outputPow);
+		displayString(4, "Error = %f", error);
+		lastError = error;
+		pidOutput = outputPow;
+		setXRPM(outputPow);
+		wait1Msec(10);
+	}
+}
 
 void readNextLine(TFileHandle fin, bool* points){
 	int integerIn;
@@ -112,16 +156,83 @@ float fmod(float dividend, float divisor) {
 	return dividend - ((int)(dividend/divisor))*divisor;
 }
 
-void stopMovement()
+void moveYAxis(int distance)
 {
-	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
+	const float WHEEL_DIA= 4.25;
+	const float ENC_LIMIT= (distance/100.0)*180*25/(PI*WHEEL_DIA);
+	// geared down 25 to 1
+	int motorSpeed = 20;
+	int hault =0;
+
+	if (distance <0)
+		motorSpeed *= -1;
+
+	nMotorEncoder[Y_AXIS]=0;
+	motor[Y_AXIS]=motorSpeed;
+
+	while (nMotorEncoder[Y_AXIS] < ENC_LIMIT)
+	{}
+
+	motor[Y_AXIS]= hault;
 }
 
-void moveYAxis(){}
+void moveXAxis (int distance)
+{
+	const float PINION_CIRC = 25.44;
+	const float ENC_LIMIT = (distance/100.0)*180/PINION_CIRC;
 
-void pause(){}
+	int motorSpeed = 90;
+	int hault =0;
 
-void scan(){}
+	if (distance <0)
+		motorSpeed *= -1;
+
+	nMotorEncoder[X_AXIS]=0;
+	motor[X_AXIS]=motorSpeed;
+
+	while (nMotorEncoder[X_AXIS] < ENC_LIMIT)
+	{}
+
+	motor[X_AXIS]= hault;
+}
+
+void pause(int* speeds, int currentPoint)
+{
+	// stop x axis stuff here
+	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
+
+	while(!getButtonPress(BUTTON_PAUSE));
+	while(getButtonPress(BUTTON_PAUSE));
+
+	motor[Z_AXIS] = speeds[currentPoint];
+	// start x axis stuff here
+}
+
+void scan(int*scanArray)
+{
+	for (int initialize= 0; initialize < SCAN_MATRIX*SCAN_MATRIX; initialize++)
+	{
+		scanArray[initialize] = 0 ;
+	}
+
+	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
+	SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
+	zeroAllAxis();
+	moveXAxis(POINT_DISTANCE);
+	moveYAxis(POINT_DISTANCE);
+
+	int arrayIndex = 0;
+	for (int scanY = 0 ; scanY < SCAN_MATRIX; scanY++ && arrayIndex++ )
+	{
+		for (int scanX = 0; scanX < SCAN_MATRIX; scanX ++ && arrayIndex++)
+		{
+			scanArray[arrayIndex] = SensorValue[SCANNER_SENSOR];
+			moveXAxis(SCAN_STEP);
+		}
+		moveYAxis(SCAN_STEP);
+	}
+	zeroAllAxis();
+}
 
 task main()
 {
@@ -142,17 +253,16 @@ task main()
 
 	// open file now that user has confirmed it is correct file
 	TFileHandle fin;
-
-	// check that file exists
-	if (!openReadPC(fin, "pointFile.txt" )){
+	openReadPC(fin, "outputBro.txt" );
+	int rowsToPlot = 0;
+	// check that file exists and get the number of rows we are plotting from the file
+	if (!readIntPC(fin, rowsToPlot)){
 		displayString(2, "Could not open point file.");
+		wait10Msec(500);
 	}
 	else
 	{
-		// get the number of rows we are plotting from the file
-		int rowsToPlot = 0;
-		readIntPC(fin, rowsToPlot);
-
+		rowsToPlot = 60;
 		// declare two parallel arrays to store whether or not we plot a respective point and to store the speed of the z axis at each point
 		bool points[POINTS_PER_LINE];
 		int speeds[POINTS_PER_LINE];
@@ -160,7 +270,8 @@ task main()
 		// start plotting the points
 		zeroAllAxis();
 		time1[T1] = 0;
-		for(int rowNumber = 0; rowNumber < rowsToPlot; rowNumber++) {
+		for(int rowNumber = 0; rowNumber < 60; rowNumber++) {
+			displayString(6,"rowNum = %d", rowNumber);
 			// read next line of image to plot
 			readNextLine(fin, points);
 			// calculates the speeds of the z axis for the given row
@@ -169,13 +280,19 @@ task main()
 			nMotorEncoder[Z_AXIS] = 0;
 			// zero timer so we know when to plot each point
 			time1[T2] = 0;
-
-
+			if(rowNumber%2 == 0){
+				target = 46.875;
+			}
+			else{
+				target = -46.875;
+			}
+			startTask(calculatePID);
 			// set x axis to constant speed -- changes directions based on odd or even row
 
 			for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
+				displayString(5,"pointNum = %d", pointNumber);
 				if(getButtonPress(PAUSE_BUTTON))
-					pause();
+					pause(speeds, pointNumber);
 
 				// zero time to do the actual pen stroke
 				time1[T3] = 0;
@@ -189,19 +306,20 @@ task main()
 				// set the z axis to its desired speed between points
 				motor[Z_AXIS] = speeds[pointNumber];
 				// wait until we reach the next "point"
-				wait1Msec((int)(TIME_BETWEEN_POINTS*1000 - time1[T3]));
+				time1[T4] = 0;
+				while(time1{T4] < TIME_BETWEEN_POINTS*1000-time1[T3]);
 			}
 
+			stopTask(calculatePID);
 			// zero z axis
 			zeroAxis((int)Z);
 
 			// move y axis to next row
 			// do not do this if we are on the last line
 			if (rowNumber < POINTS_PER_LINE-1)
-				moveYAxis();
+				moveYAxis(AXIS_STEP);
 		}
-
-		scan();
+		scan(scanArray);
 
 		displayString(1, "Accuracy: %f", 0.82);
 		displayString(12, "Press enter to continue");
