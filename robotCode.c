@@ -243,7 +243,7 @@ task main()
 
 	// confirmation screen that they have uploaded the image they want
 	displayString(1, "If the correct imge is uploaded");
-	displayString(2, "press enter to start the plot");
+	displayString(2, "press enter to continue");
 	while(!getButtonPress(buttonEnter));
 	while(getButtonPress(buttonEnter));
 	eraseDisplay();
@@ -262,9 +262,17 @@ task main()
 		// declare two parallel arrays to store whether or not we plot a respective point and to store the speed of the z axis at each point
 		bool points[POINTS_PER_LINE];
 		int speeds[POINTS_PER_LINE];
-
-		// start plotting the points
+		// zero the axes
 		zeroAllAxis();
+		// confirmation screen that they have placed the paper correctly
+		displayString(1, "Place the paper in the correct location");
+		displayString(2, "then press enter to start the plot");
+		while(!getButtonPress(buttonEnter));
+		while(getButtonPress(buttonEnter));
+		eraseDisplay();
+
+
+		// START PLOTTING POINTS
 		time1[T1] = 0;
 		for(int rowNumber = 0; rowNumber < rowsToPlot; rowNumber++) {
 			displayString(11,"Row Number = %d", rowNumber+1);
