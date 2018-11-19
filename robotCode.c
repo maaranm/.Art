@@ -280,78 +280,79 @@ task main()
 		for(int rowNumber = 0; rowNumber < rowsToPlot; rowNumber++) {
 			displayString(11,"Row Number = %d", rowNumber+1);
 			// read next line of image to plot
-			// if it is empty (no points to plot, it will return false) then step the y axis forward and read the next line
-			while(!readNextLine(fin, points))
-				moveYAxis(POINT_DISTANCE);
-			// calculates the speeds of the z axis for the given row
-			adjustPenSpeed(points, speeds);
-			// zero encoder on z axis so we can zero pen properly
-			nMotorEncoder[Z_AXIS] = 0;
-			// zero timer so we know when to plot each point
+			// if it has points to plot, then plot them, else skip the plotting
+			if(readNextLine(fin, points))
+			{
+				// calculates the speeds of the z axis for the given row
+				adjustPenSpeed(points, speeds);
+				// zero encoder on z axis so we can zero pen properly
+				nMotorEncoder[Z_AXIS] = 0;
+				// zero timer so we know when to plot each point
 
 
 
 
 
-			// FIX THIS LATER --> NO PID RIGHT NOW
+				// FIX THIS LATER --> NO PID RIGHT NOW
 
-			int xPow = target;
-			if(rowNumber%2 == 0){
-				xPow = target;
-			}
-			else{
-				xPow = target*-1;
-			}
-			//startTask(calculatePID);
-			setXRPM(xPow);
-			// set x axis to constant speed -- changes directions based on odd or even row
-
-
-
-
-
-			for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
-				nMotorEncoder[X_AXIS] = 0;
-
-
-
-				// FIX THIS LATER --> TIME AS SEPERATE TASK?
-				displayString(1, "Time = %f", time1[T1]/60000);
-				displayString(12,"Point Number = %d", pointNumber+1);
-
-				if(getButtonPress(PAUSE_BUTTON))
-					pause(speeds, pointNumber);
-
-				// plot the point if we should
-				if (points[pointNumber])
-				{
-					motor[Z_AXIS] = 100;
-					while(SensorValue[Z_LIMIT_SWITCH] == 0);
-				}
-				// set the z axis to its desired speed between points
-				motor[Z_AXIS] = speeds[pointNumber];
-				// wait until we reach the next "point"
-				float dist = (POINT_DISTANCE/25.4)*360;
-				if(rowNumber % 2 == 0){
-					while(nMotorEncoder[X_AXIS] <= dist);
+				int xPow = target;
+				if(rowNumber%2 == 0){
+					xPow = target;
 				}
 				else{
-					while(nMotorEncoder[X_AXIS] >= -dist);
+					xPow = target*-1;
+				}
+				//startTask(calculatePID);
+				setXRPM(xPow);
+				// set x axis to constant speed -- changes directions based on odd or even row
+
+
+
+
+
+				for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
+					nMotorEncoder[X_AXIS] = 0;
+
+
+
+					// FIX THIS LATER --> TIME AS SEPERATE TASK?
+					displayString(1, "Time = %f", time1[T1]/60000);
+					displayString(12,"Point Number = %d", pointNumber+1);
+
+					if(getButtonPress(PAUSE_BUTTON))
+						pause(speeds, pointNumber);
+
+					// plot the point if we should
+					if (points[pointNumber])
+					{
+						motor[Z_AXIS] = 100;
+						while(SensorValue[Z_LIMIT_SWITCH] == 0);
+					}
+					// set the z axis to its desired speed between points
+					motor[Z_AXIS] = speeds[pointNumber];
+					// wait until we reach the next "point"
+					float dist = (POINT_DISTANCE/25.4)*360;
+					if(rowNumber % 2 == 0){
+						while(nMotorEncoder[X_AXIS] <= dist);
+					}
+					else{
+						while(nMotorEncoder[X_AXIS] >= -dist);
+					}
+
+					eraseDisplay();
 				}
 
-				eraseDisplay();
+
+				// FIX THIS LATER --> NO PID RIGHT NOW
+				//if(rowNumber%2 != 0)
+				//	while(SensorValue[X_LIMIT_SWITCH] == 0);
+				//stopTask(calculatePID);
+				motor[X_AXIS] = 0;
+
+
+				// zero z axis
+				zeroAxis(Z);
 			}
-
-
-			// FIX THIS LATER --> NO PID RIGHT NOW
-			//if(rowNumber%2 != 0)
-			//	while(SensorValue[X_LIMIT_SWITCH] == 0);
-			//stopTask(calculatePID);
-			motor[X_AXIS] = 0;
-
-
-			// zero z axis
-			zeroAxis(Z);
 
 			// move y axis to next row
 			// do not do this if we are on the last line
