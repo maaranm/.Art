@@ -1,8 +1,8 @@
 
 const int POINTS_PER_LINE = 81;
-const int X_SPEED=20; // mm/s
+const int X_SPEED=5; // mm/s
 const int AXIS_STEP = 2; // mm
-const int MAX_X = 224; // mm
+const int MAX_X = 160; // mm
 const int MAX_Y = 224; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 
@@ -24,7 +24,7 @@ const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between 
 
 enum Axes {X, Y, Z};
 
-float lastError = 0, target = 0, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
+float lastError = 0, target = X_SPEED*60/25.4, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
 float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 int pidOutput = 0;
 
@@ -159,16 +159,16 @@ float fmod(float dividend, float divisor) {
 void moveYAxis(int distance)
 {
 	const float WHEEL_DIA= 4.25;
-	const float ENC_LIMIT= (distance/100.0)*180*25/(PI*WHEEL_DIA);
+	const float ENC_LIMIT= (distance/10.0)*360*25/(PI*WHEEL_DIA);
 	// geared down 25 to 1
-	int motorSpeed = 20;
-	int hault =0;
+	int motorSpeed = 90;
+	int hault = 0;
 
 	if (distance <0)
 		motorSpeed *= -1;
 
 	nMotorEncoder[Y_AXIS]=0;
-	motor[Y_AXIS]=motorSpeed;
+	motor[Y_AXIS]= motorSpeed;
 
 	while (nMotorEncoder[Y_AXIS] < ENC_LIMIT)
 	{}
@@ -179,9 +179,9 @@ void moveYAxis(int distance)
 void moveXAxis (int distance)
 {
 	const float PINION_CIRC = 25.44;
-	const float ENC_LIMIT = (distance/100.0)*180/PINION_CIRC;
+	const float ENC_LIMIT = (distance/10.0)*360/PINION_CIRC;
 
-	int motorSpeed = 90;
+	int motorSpeed = 20;
 	int hault =0;
 
 	if (distance <0)
@@ -201,8 +201,8 @@ void pause(int* speeds, int currentPoint)
 	// stop x axis stuff here
 	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
 
-	while(!getButtonPress(BUTTON_PAUSE));
-	while(getButtonPress(BUTTON_PAUSE));
+	while(!getButtonPress(PAUSE_BUTTON));
+	while(getButtonPress(PAUSE_BUTTON));
 
 	motor[Z_AXIS] = speeds[currentPoint];
 	// start x axis stuff here
@@ -270,7 +270,7 @@ task main()
 		// start plotting the points
 		zeroAllAxis();
 		time1[T1] = 0;
-		for(int rowNumber = 0; rowNumber < 60; rowNumber++) {
+		for(int rowNumber = 0; rowNumber < POINTS_PER_LINE; rowNumber++) {
 			displayString(6,"rowNum = %d", rowNumber);
 			// read next line of image to plot
 			readNextLine(fin, points);
@@ -281,15 +281,17 @@ task main()
 			// zero timer so we know when to plot each point
 			time1[T2] = 0;
 			if(rowNumber%2 == 0){
-				target = 46.875;
+				target = target;
 			}
 			else{
-				target = -46.875;
+				target = -target;
 			}
-			startTask(calculatePID);
+			//startTask(calculatePID);
+			setXRPM(target);
 			// set x axis to constant speed -- changes directions based on odd or even row
 
 			for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
+				nMotorEncoder[X_AXIS] = 0;
 				displayString(5,"pointNum = %d", pointNumber);
 				if(getButtonPress(PAUSE_BUTTON))
 					pause(speeds, pointNumber);
@@ -307,17 +309,27 @@ task main()
 				motor[Z_AXIS] = speeds[pointNumber];
 				// wait until we reach the next "point"
 				time1[T4] = 0;
-				while(time1{T4] < TIME_BETWEEN_POINTS*1000-time1[T3]);
-			}
+				//while(time1{T4] < TIME_BETWEEN_POINTS*1000-time1[T3]);
+				float dist = (POINT_DISTANCE/25.4)*360;
+				if(rowNumber % 2 == 0){
+					while(nMotorEncoder[X_AXIS] <= dist);
+				}
+				else{
+					while(nMotorEncoder[X_AXIS] >= -dist);
+				}
 
-			stopTask(calculatePID);
+			}
+			if(rowNumber%2 != 0)
+				while(SensorValue[X_LIMIT_SWITCH] == 0);
+			//stopTask(calculatePID);
+			motor[X_AXIS] = 0;
 			// zero z axis
 			zeroAxis((int)Z);
 
 			// move y axis to next row
 			// do not do this if we are on the last line
 			if (rowNumber < POINTS_PER_LINE-1)
-				moveYAxis(AXIS_STEP);
+				moveYAxis(POINT_DISTANCE);
 		}
 		scan(scanArray);
 
