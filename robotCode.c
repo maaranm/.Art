@@ -1,6 +1,6 @@
 
-const int POINTS_PER_LINE = 81;
-const int X_SPEED=5; // mm/s
+const int POINTS_PER_LINE = 40;
+const int X_SPEED=10; // mm/s
 const int AXIS_STEP = 2; // mm
 const int MAX_X = 160; // mm
 const int MAX_Y = 224; // mm
@@ -158,8 +158,8 @@ float fmod(float dividend, float divisor) {
 
 void moveYAxis(int distance)
 {
-	const float WHEEL_DIA= 4.25;
-	const float ENC_LIMIT= (distance/10.0)*360*25/(PI*WHEEL_DIA);
+	const float WHEEL_DIA= 42.5; //mm
+	const float ENC_LIMIT= (distance)/(PI*WHEEL_DIA)*360*25;
 	// geared down 25 to 1
 	int motorSpeed = 90;
 	int hault = 0;
@@ -170,7 +170,7 @@ void moveYAxis(int distance)
 	nMotorEncoder[Y_AXIS]=0;
 	motor[Y_AXIS]= motorSpeed;
 
-	while (nMotorEncoder[Y_AXIS] < ENC_LIMIT)
+	while (abs(nMotorEncoder[Y_AXIS]) <= ENC_LIMIT)
 	{}
 
 	motor[Y_AXIS]= hault;
@@ -280,14 +280,15 @@ task main()
 			nMotorEncoder[Z_AXIS] = 0;
 			// zero timer so we know when to plot each point
 			time1[T2] = 0;
+			int xPow = target;
 			if(rowNumber%2 == 0){
-				target = target;
+				xPow = target;
 			}
 			else{
-				target = -target;
+				xPow = target*-1;
 			}
 			//startTask(calculatePID);
-			setXRPM(target);
+			setXRPM(xPow);
 			// set x axis to constant speed -- changes directions based on odd or even row
 
 			for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
@@ -319,8 +320,8 @@ task main()
 				}
 
 			}
-			if(rowNumber%2 != 0)
-				while(SensorValue[X_LIMIT_SWITCH] == 0);
+			//if(rowNumber%2 != 0)
+			//	while(SensorValue[X_LIMIT_SWITCH] == 0);
 			//stopTask(calculatePID);
 			motor[X_AXIS] = 0;
 			// zero z axis
