@@ -94,18 +94,22 @@ void scan(int*scanArray);
 	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
 	SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
 	zeroAllAxis();
-	moveXAxis(POINT_DISTANCE);
+	moveXAxis(POINT_DISTANCE); // change these values
 	moveYAxis(POINT_DISTANCE);
+	int direction = 1;
 
 	int arrayIndex = 0;
-	for (int scanY = 0 ; scanY < SCAN_MATRIX; scanY++ && arrayIndex++ )
+	for (int scanY = 0 ; scanY < SCAN_MATRIX; scanY++)
 	{
-		for (int scanX = 0; scanX < SCAN_MATRIX; scanX ++ && arrayIndex++)
+		for (int scanX = 0; scanX < SCAN_MATRIX; scanX++)
 		{
 			scanArray[arrayIndex] = SensorValue[SCANNER_SENSOR];
-			moveXAxis(SCAN_STEP);
+			moveXAxis(direction * SCAN_STEP);
+			arrayIndex++;
 		}
-		moveYAxis(SCAN_STEP);
+
+		moveYAxis(SCAN_STEP)
+		direction *= -1 ;
 	}
 	zeroAllAxis();
 }
