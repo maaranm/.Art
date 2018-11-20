@@ -218,7 +218,7 @@ void scan(int*scanArray)
 	SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
 	zeroAllAxis();
 	moveXAxis(POINT_DISTANCE); // change these values
-	moveYAxis(POINT_DISTANCE);
+	moveYAxis(POINT_DISTANCE + 55);
 	int direction = 1;
 
 	int arrayIndex = 0;
@@ -236,6 +236,31 @@ void scan(int*scanArray)
 	}
 	zeroAllAxis();
 }
+
+float scanEval( int*scanArray, TFileHandle & fin)
+{
+	const int TOL = 5;
+	int accurate = 0;
+	for ( int count = 0 ; count < SCAN_MATRIX * SCAN_MATRIX; count ++ )
+	{
+		int origImage =0;
+		readIntPC(fin, origImage);
+		if (abs(scanArray[count] - origImage) < TOL)
+			accurate ++;
+	}
+
+	return accurate*100.0/ (SCAN_MATRIX*SCAN_MATRIX):
+}
+
+
+
+
+
+
+
+
+
+
 
 task main()
 {
