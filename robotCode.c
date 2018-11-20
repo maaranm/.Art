@@ -18,14 +18,14 @@ const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between
 const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
 
 const int SCAN_NXN = 3;
-const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
+const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE; //mm
 const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
 
 float lastError = 0, target = X_SPEED*60/25.4, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
 float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 int pidOutput = 0;
 
-int scanArray[SCAN_MATRIX][SCAN_MATRIX];
+
 
 #include "PC_FileIO.c"
 
@@ -67,12 +67,12 @@ void zeroAxis(Axes axis){
 		while (!SensorValue[X_LIMIT_SWITCH]);
 		motor[X_AXIS] = 0;
 		nMotorEncoder[X_AXIS] = 0;
-	} else if (axis == Y){
+		} else if (axis == Y){
 		motor[Y_AXIS] = -100;
 		while (!SensorValue[Y_LIMIT_SWITCH]);
 		motor[Y_AXIS] = 0;
 		nMotorEncoder[Y_AXIS] = 0;
-	} else {
+		} else {
 		// check which direction to zero the z axis in (so we don't plot a point accidentally)
 		if(nMotorEncoder[Z_AXIS]%360 < 180)
 			motor[Z_AXIS] = -50;
@@ -158,7 +158,7 @@ void moveYAxis(int distance)
 {
 	const float WHEEL_DIA= 42.5; //mm
 	const float GEAR_RATIO = 25.0/1.0; 	// geared down 25 to 1
-	const float ENC_LIMIT= (distance)/(PI*WHEEL_DIA)*360*GEAR_RATIO;
+	const float ENC_LIMIT= abs(distance)/(PI*WHEEL_DIA)*360*GEAR_RATIO;
 	int motorSpeed = 90;
 	int hault = 0;
 
@@ -176,22 +176,21 @@ void moveYAxis(int distance)
 
 void moveXAxis (int distance)
 {
-	const float PINION_CIRC = 25.44;
-	const float ENC_LIMIT = (distance/10.0)*360/PINION_CIRC;
+	const float PINION_CIRC = 25.44; //mm
+	const float ENC_LIMIT = abs(distance)*360/PINION_CIRC; //mm*(deg*rot-1)*(mm-1*rot)
 
 	int motorSpeed = 20;
-	int hault =0;
 
 	if (distance <0)
 		motorSpeed *= -1;
 
-	nMotorEncoder[X_AXIS]=0;
-	motor[X_AXIS]=motorSpeed;
+	nMotorEncoder[X_AXIS] = 0;
+	motor[X_AXIS] = motorSpeed;
 
 	while (abs(nMotorEncoder[X_AXIS]) < ENC_LIMIT)
 	{}
 
-	motor[X_AXIS]= hault;
+	motor[X_AXIS]= 0;
 }
 
 void pause(int* speeds, int currentPoint)
@@ -232,7 +231,7 @@ void scan(int*scanArray)
 			arrayIndex++;
 		}
 
-		moveYAxis(SCAN_STEP)
+		moveYAxis(SCAN_STEP);
 		direction *= -1 ;
 	}
 	zeroAllAxis();
@@ -257,7 +256,7 @@ task main()
 
 	// open file now that user has confirmed it is correct file
 	TFileHandle fin;
-	openReadPC(fin, "outputBro.txt" );
+	openReadPC(fin, "test.txt" );
 	int rowsToPlot = 0;
 	// check that file exists and get the number of rows we are plotting from the file
 	if (!readIntPC(fin, rowsToPlot)){
@@ -277,7 +276,7 @@ task main()
 		while(!getButtonPress(buttonEnter));
 		while(getButtonPress(buttonEnter));
 		eraseDisplay();
-
+/*
 
 		// START PLOTTING POINTS
 		time1[T1] = 0;
@@ -362,7 +361,8 @@ task main()
 			// do not do this if we are on the last line
 			if (rowNumber < POINTS_PER_LINE-1)
 				moveYAxis(POINT_DISTANCE);
-		}
+		}*/
+		int scanArray[SCAN_MATRIX*SCAN_MATRIX];
 		scan(scanArray);
 
 		displayString(1, "Accuracy: %f", 0.82);
