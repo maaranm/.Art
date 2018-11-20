@@ -90,9 +90,18 @@ void zeroAxis(Axes axis){
 }
 
 void zeroAllAxis(){
-	zeroAxis(Z); //z axis lifts pen
-	zeroAxis(X); //x axis zeroes
-	zeroAxis(Y); //y axis zeroes
+			motor[X_AXIS] = 0;
+	motor[X_AXIS] = -20;
+	motor[Z_AXIS] = 80;
+	motor[Y_AXIS] = -100;
+	while(!SensorValue[X_LIMIT_SWITCH] || !SensorValue[Y_LIMIT_SWITCH] || !SensorValue[Z_LIMIT_SWITCH]){
+		if (motor[Z_AXIS] && SensorValue[Z_LIMIT_SWITCH])
+			motor[Z_AXIS] = 0;
+		if (motor[X_AXIS] && SensorValue[X_LIMIT_SWITCH])
+		if (motor[Y_AXIS] && SensorValue[Y_LIMIT_SWITCH])
+			motor[Y_AXIS] = 0;
+	}
+	nMotorEncoder[X_AXIS] = nMotorEncoder[Y_AXIS] = nMotorEncoder[Z_AXIS] = 0;
 }
 
 void getEncoderValuesAtPoints(bool* points, int* encoderValues) {
