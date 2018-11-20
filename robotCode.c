@@ -37,9 +37,9 @@ void zeroAxis(int axis){ //0 = x , 1 = y , 2 = z
 }
 
 void zeroAllAxis(){
-	setXRPM(X_SPEED);
+	motor[X_AXIS] = -20;
 	motor[Z_AXIS] = 80;
-	motor[Y_AXIS] = 100;
+	motor[Y_AXIS] = -100;
 	while(!SensorValue[X_LIMIT_SWITCH] || !SensorValue[Y_LIMIT_SWITCH] || !SensorValue[Z_LIMIT_SWITCH]){
 		if (motor[Z_AXIS] && SensorValue[Z_LIMIT_SWITCH])
 			motor[Z_AXIS] = 0;
@@ -73,13 +73,13 @@ void scan();
 
 task main()
 {
-	TFileHandle fin;
+/*	TFileHandle fin;
 	bool points[POINTS_PER_LINE];
 
 	if (!openReadPC(fin, "pointFile.txt" )){
 		displayString(2, "Could not open point file.");
-	}
+	}*/
 	zeroAllAxis();
-	readNextLine(fin, points);
+//	readNextLine(fin, points);
 
 }
