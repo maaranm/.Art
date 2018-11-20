@@ -37,9 +37,18 @@ void zeroAxis(int axis){ //0 = x , 1 = y , 2 = z
 }
 
 void zeroAllAxis(){
-	zeroAxis(2); //z axis lifts pen
-	zeroAxis(0); //x axis zeroes
-	zeroAxis(1); //y axis zeroes
+	setXRPM(X_SPEED);
+	motor[Z_AXIS] = 80;
+	motor[Y_AXIS] = 100;
+	while(!SensorValue[X_LIMIT_SWITCH] || !SensorValue[Y_LIMIT_SWITCH] || !SensorValue[Z_LIMIT_SWITCH]){
+		if (motor[Z_AXIS] && SensorValue[Z_LIMIT_SWITCH])
+			motor[Z_AXIS] = 0;
+		if (motor[X_AXIS] && SensorValue[X_LIMIT_SWITCH])
+			motor[X_AXIS] = 0;
+		if (motor[Y_AXIS] && SensorValue[Y_LIMIT_SWITCH])
+			motor[Y_AXIS] = 0;
+	}
+	nMotorEncoder[X_AXIS] = nMotorEncoder[Y_AXIS] = nMotorEncoder[Z_AXIS] = 0;
 }
 
 void adjustPenSpeed();
