@@ -9,13 +9,17 @@ const int PAUSE_BUTTON = (int)buttonEnter;
 
 enum Axes {X, Y, Z};
 
-const int POINTS_PER_LINE = 40;
+const int POINTS_PER_LINE = 50;
 const int X_SPEED=10; // mm/s
+const float X_DISTANCE_PER_ROTATION = 25.44 //mm per rotation
+const float Z_80_DEG_PER_SEC = 1281.233;
 const int AXIS_STEP = 2; // mm
 const int MAX_X = 160; // mm
 const int MAX_Y = 160; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
+
+const int DEBOUNCE = 200;
 
 const int SCAN_NXN = 3;
 const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
@@ -49,6 +53,7 @@ void setXRPM(float rpm){
 	motor[X_AXIS] = power;
 }
 
+/*
 int getDistanceToNextPoint(bool* points, int currentPoint) {
 	int nextPoint = 0;
 	// traverse the array to find the next point we plot - by default we say this is the next index in the array
@@ -60,16 +65,29 @@ int getDistanceToNextPoint(bool* points, int currentPoint) {
 		return nextPoint-currentPoint;
 	return -1;
 }
+*/
+
+int getNextPlottedPointIndex(bool* points, int currentPoint) {
+	int nextPoint = 0;
+	// traverse the array to find the next point we plot - by default we say this is the next index in the array
+	for (nextPoint = currentPoint; nextPoint < POINTS_PER_LINE && points[nextPoint] == 0; nextPoint++){}
+
+	// check that we actually found a point and return its index, if not, return -1
+	// this check is necessary for the case where our current point is the last point
+	if (nextPoint < POINTS_PER_LINE)
+		return nextPoint;
+	return -1;
+}
 
 void zeroAxis(Axes axis){
 	if(axis == X){
 		motor[X_AXIS] = -25;
-		while (!SensorValue[X_LIMIT_SWITCH]);
+		while (!SensorValue[X_LIMIT_SWITCH]){}
 		motor[X_AXIS] = 0;
 		nMotorEncoder[X_AXIS] = 0;
 	} else if (axis == Y){
 		motor[Y_AXIS] = -100;
-		while (!SensorValue[Y_LIMIT_SWITCH]);
+		while (!SensorValue[Y_LIMIT_SWITCH]){}
 		motor[Y_AXIS] = 0;
 		nMotorEncoder[Y_AXIS] = 0;
 	} else {
@@ -90,6 +108,7 @@ void zeroAllAxis(){
 	zeroAxis(Y); //y axis zeroes
 }
 
+/*
 int calcZAxisMotorPower(float rpm) {
 	// based on a linear trendline to convert rpm to motor power
 	// trendline uses 11 data points (motor power from 0 to 100 in increments of 10 and associated rpm)
@@ -127,6 +146,32 @@ void adjustPenSpeed(bool* points, int* speeds)
 			speeds[pointToSet] = speed;
 	}
 }
+*/
+
+void getEncoderValuesAtPoints(bool* points, int* encoderValues)
+{
+	int nextPlottedPoint = 0, plottedPointNum = 0;
+
+//		TFileHandle fout;
+
+//		openWritePC(fout, "encoder.txt");
+
+
+	for ( ; (nextPlottedPoint = getNextPlottedPointIndex(points, nextPlottedPoint)) != -1; plottedPointNum++)
+	{
+		float encoderValAtNextPoint = ((nextPlottedPoint+2)*POINT_DISTANCE-360.0/Z_80_DEG_PER_SEC*X_SPEED)/X_DISTANCE_PER_ROTATION*360.0;
+		encoderValues[plottedPointNum] = encoderValAtNextPoint;
+/*
+			writeLongPC(fout, nextPlottedPoint);
+			writeCharPC(fout, ',');
+			writeLongPC(fout, encoderValues[i]);
+			writeCharPC(fout, ' ');
+*/
+	}
+
+	for (int fillEmpty = plottedPointNum; fillEmpty < POINTS_PER_LINE; fillEmpty++)
+			encoderValues[fillEmpty] = -1;
+}
 
 task calculatePID(){
 	while(true){
@@ -151,7 +196,8 @@ bool readNextLine(TFileHandle fin, bool* points){
 		points[index] = (integerIn == 1);
 		hasPoint = (hasPoint || points[index]);
 	}
-	return hasPoint;
+	//return hasPoint;
+	return true;
 }
 
 void moveYAxis(int distance)
@@ -201,8 +247,8 @@ void pause(int* speeds, int currentPoint)
 	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
 
 	// wait for button to be pressed again
-	while(!getButtonPress(PAUSE_BUTTON));
-	while(getButtonPress(PAUSE_BUTTON));
+	while(!getButtonPress(PAUSE_BUTTON)){}
+	while(getButtonPress(PAUSE_BUTTON)){}
 
 	motor[Z_AXIS] = speeds[currentPoint];
 	// start x axis stuff here
@@ -232,7 +278,7 @@ void scan(int*scanArray)
 			arrayIndex++;
 		}
 
-		moveYAxis(SCAN_STEP)
+		moveYAxis(SCAN_STEP);
 		direction *= -1 ;
 	}
 	zeroAllAxis();
@@ -244,20 +290,20 @@ task main()
 	displayString(1, "Please select image on PC");
 	displayString(2, "then transfer file to EV3");
 	displayString(12, "Press enter to continue");
-	while(!getButtonPress(buttonEnter));
-	while(getButtonPress(buttonEnter));
+	while(!getButtonPress(buttonEnter)){}
+	while(getButtonPress(buttonEnter)){}
 	eraseDisplay();
 
 	// confirmation screen that they have uploaded the image they want
 	displayString(1, "If the correct imge is uploaded");
 	displayString(2, "press enter to continue");
-	while(!getButtonPress(buttonEnter));
-	while(getButtonPress(buttonEnter));
+	while(!getButtonPress(buttonEnter)){}
+	while(getButtonPress(buttonEnter)){}
 	eraseDisplay();
 
 	// open file now that user has confirmed it is correct file
 	TFileHandle fin;
-	openReadPC(fin, "outputBro.txt" );
+	openReadPC(fin, "test.txt" );
 	int rowsToPlot = 0;
 	// check that file exists and get the number of rows we are plotting from the file
 	if (!readIntPC(fin, rowsToPlot)){
@@ -268,31 +314,44 @@ task main()
 	{
 		// declare two parallel arrays to store whether or not we plot a respective point and to store the speed of the z axis at each point
 		bool points[POINTS_PER_LINE];
-		int speeds[POINTS_PER_LINE];
+		int encoderValues[POINTS_PER_LINE];
 		// zero the axes
 		zeroAllAxis();
 		// confirmation screen that they have placed the paper correctly
 		displayString(1, "Place the paper in the correct location");
 		displayString(2, "then press enter to start the plot");
-		while(!getButtonPress(buttonEnter));
-		while(getButtonPress(buttonEnter));
+		while(!getButtonPress(buttonAny))
+		{
+			wait1Msec(10);
+			int random = 10;
+			random *= -1;
+		}
+		displayString(3, "Mike is a");
+		while(getButtonPress(buttonAny))
+		{
+			displayString(4,"SUper due");
+			wait1Msec(10);
+			int randomTwo = 10;
+			randomTwo *= -1;
+		}
+
 		eraseDisplay();
 
-
+		float dist = (POINT_DISTANCE/25.4)*360;
 		// START PLOTTING POINTS
 		time1[T1] = 0;
 		for(int rowNumber = 0; rowNumber < rowsToPlot; rowNumber++) {
-			displayString(11,"Row Number = %d", rowNumber+1);
 			// read next line of image to plot
 			// if it has points to plot, then plot them, else skip the plotting
 			if(readNextLine(fin, points))
 			{
-				// calculates the speeds of the z axis for the given row
-				adjustPenSpeed(points, speeds);
+				// calculates the encoder values of the x axis for the given row at plotted points
+				getEncoderValuesAtPoints(points, encoderValues);
+
 				// zero encoder on z axis so we can zero pen properly
 				nMotorEncoder[Z_AXIS] = 0;
+				nMotorEncoder[X_AXIS] = 0;
 				// zero timer so we know when to plot each point
-
 
 
 
@@ -313,49 +372,30 @@ task main()
 
 
 
-
-				for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
-					nMotorEncoder[X_AXIS] = 0;
-
-
-
+				int pointNumber = 0;
+				//for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
+				while((nMotorEncoder[X_AXIS] < ((MAX_X+2*POINT_DISTANCE)/X_DISTANCE_PER_ROTATION)*360.0 && rowNumber%2==0) || (rowNumber%2==1 && !SensorValue[X_LIMIT_SWITCH])){
 					// FIX THIS LATER --> TIME AS SEPERATE TASK?
-					displayString(1, "Time = %f", time1[T1]/60000);
-					displayString(12,"Point Number = %d", pointNumber+1);
+					displayString(1, "Time = %f", time1[T1]/60000.0);
+					displayString(4,"Row Number = %d", rowNumber+1);
+					displayString(5,"Point Number = %d", pointNumber+1);
 
 					if(getButtonPress(PAUSE_BUTTON))
-						pause(speeds, pointNumber);
+						pause(encoderValues, pointNumber);
 
 					// plot the point if we should
-					if (points[pointNumber])
+					if (encoderValues[pointNumber] != -1 && abs(nMotorEncoder[X_AXIS]) >= encoderValues[pointNumber])
 					{
-						motor[Z_AXIS] = 100;
-						while(SensorValue[Z_LIMIT_SWITCH] == 0);
+						motor[Z_AXIS] = 80;
+						while(SensorValue[Z_LIMIT_SWITCH] == 1){}
+						wait1Msec(DEBOUNCE);
+						while(SensorValue[Z_LIMIT_SWITCH] == 0){}
+						motor[Z_AXIS] = 0;
+						pointNumber++;
 					}
-					// set the z axis to its desired speed between points
-					motor[Z_AXIS] = speeds[pointNumber];
-					// wait until we reach the next "point"
-					float dist = (POINT_DISTANCE/25.4)*360;
-					if(rowNumber % 2 == 0){
-						while(nMotorEncoder[X_AXIS] <= dist);
-					}
-					else{
-						while(nMotorEncoder[X_AXIS] >= -dist);
-					}
-
-					eraseDisplay();
 				}
-
-
-				// FIX THIS LATER --> NO PID RIGHT NOW
-				//if(rowNumber%2 != 0)
-				//	while(SensorValue[X_LIMIT_SWITCH] == 0);
-				//stopTask(calculatePID);
 				motor[X_AXIS] = 0;
-
-
-				// zero z axis
-				zeroAxis(Z);
+				eraseDisplay();
 			}
 
 			// move y axis to next row
@@ -367,8 +407,8 @@ task main()
 
 		displayString(1, "Accuracy: %f", 0.82);
 		displayString(12, "Press enter to continue");
-		while(!getButtonPress(buttonEnter));
-		while(getButtonPress(buttonEnter));
+		while(!getButtonPress(buttonEnter)){}
+		while(getButtonPress(buttonEnter)){}
 		eraseDisplay();
 	}
 }
