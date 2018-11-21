@@ -377,7 +377,7 @@ task main()
 
 			// move y axis to next row
 			// do not do this if we are on the last line
-			if (rowNumber < rowsToPlot-2)
+			if (rowNumber < rowsToPlot-1)
 				moveYAxis(POINT_DISTANCE);
 		}
 		long plotTime = time1[T1];
