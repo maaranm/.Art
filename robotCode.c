@@ -12,7 +12,7 @@ enum Axes {X, Y, Z};
 const int POINTS_PER_LINE = 80;
 const int X_SPEED = 7; // mm/s
 const int X_FAST_SPEED_MULT = 3; // mm/s
-const float X_DISTANCE_PER_ROTATION = 25.44 //mm per rotation
+const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
 const float Z_80_DEG_PER_SEC = 688.4181119; //
 //const float POINT_OFFSET_DISTANCE = POINT_DISTANCE/4.0; // mm
 const int AXIS_STEP = 2; // mm
@@ -33,7 +33,7 @@ float lastError = 0, target = X_SPEED*60/25.4, kpF = 2, kdF = 0.05, kpR = 1, kdR
 float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 int pidOutput = 0;
 
-int scanArray[SCAN_MATRIX][SCAN_MATRIX];
+short int scanArray[SCAN_MATRIX][SCAN_MATRIX];
 
 #include "PC_FileIO.c"
 
@@ -86,7 +86,7 @@ void zeroAxis(Axes axis){
 			motor[Z_AXIS] = -50;
 		else
 			motor[Z_AXIS] = 50;
-		while (!SensorValue[Z_LIMIT_SWITCH]);
+		while (!SensorValue[Z_LIMIT_SWITCH]){}
 		motor[Z_AXIS] = 0;
 		nMotorEncoder[Z_AXIS] = 0;
 	}
@@ -151,7 +151,7 @@ task calculatePID(){
 		float curVal = calculateRPM(X_AXIS);
 		float error = target-curVal;
 		int outputPow = 0;
-		outputPow = error*kpF + lastError*kdF;
+		outputPow = error*kpF + (error-lastError)*kdF;
 		displayString(3, "Power = %d", outputPow);
 		displayString(4, "Error = %f", error);
 		lastError = error;
@@ -211,18 +211,15 @@ void moveXAxis (int distance)
 	motor[X_AXIS]= 0;
 }
 
-void pause(int* speeds, int currentPoint)
+void pause()
 {
-	// stop x axis stuff here
 	// turn off all motors
 	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
-
+	//give time for button to be released
+	wait1Msec(1000);
 	// wait for button to be pressed again
 	while(!getButtonPress(PAUSE_BUTTON)){}
 	while(getButtonPress(PAUSE_BUTTON)){}
-
-	motor[Z_AXIS] = speeds[currentPoint];
-	// start x axis stuff here
 }
 
 void scan(int*scanArray)
@@ -298,13 +295,12 @@ task main()
 		// zero the axes
 		zeroAllAxis();
 		// confirmation screen that they have placed the paper correctly
-		displayString(1, "Place the paper in the correct location");
-		displayString(2, "then press enter to start the plot");
+		displayString(1, "Place paper in correct location");
+		displayString(2, "then press enter to start");
 		while(!getButtonPress(buttonAny)){}
 		while(getButtonPress(buttonAny)){}
 		eraseDisplay();
 
-		float dist = (POINT_DISTANCE/25.4)*360;
 		// START PLOTTING POINTS
 		time1[T1] = 0;
 		for(int rowNumber = 0, rowPlotted = 0; rowNumber < rowsToPlot; rowNumber++) {
@@ -314,7 +310,6 @@ task main()
 			{
 				// calculates the encoder values of the x axis for the given row at plotted points
 				getEncoderValuesAtPoints(points, encoderValues);
-
 				// zero encoder on z axis so we can zero pen properly
 				nMotorEncoder[Z_AXIS] = 0;
 				// zero encoder of x axis so we can determine when to plot points
@@ -348,7 +343,7 @@ task main()
 					displayString(5,"Point Number: %d", pointNumber+1);
 
 					if(getButtonPress(PAUSE_BUTTON))
-						pause(encoderValues, pointNumber);
+						pause();
 
 					// plot the point if we should
 					if (encoderValues[pointNumber] != -1 && abs(nMotorEncoder[X_AXIS]) >= encoderValues[pointNumber])
@@ -359,19 +354,23 @@ task main()
 						while(SensorValue[Z_LIMIT_SWITCH] == 0){}
 						motor[Z_AXIS] = 0;
 						pointNumber++;
-					} else if ((encoderValues[pointNumber] == -1 && abs(nMotorEncoder[X_AXIS]) < (MAX_X_ENC - SLOW_TICKS)) || abs(nMotorEncoder[X_AXIS]) < (encoderValues[pointNumber] - SLOW_TICKS)){
+					}
+					// checks if there are no more points or if the points are far awaw
+					else if ((encoderValues[pointNumber] == -1 && abs(nMotorEncoder[X_AXIS]) < (MAX_X_ENC - SLOW_TICKS)) || abs(nMotorEncoder[X_AXIS]) < (encoderValues[pointNumber] - SLOW_TICKS)){
+						//only sets motor power if it is not already fast
 						if (!fast){
 							setXRPM(xPow*X_FAST_SPEED_MULT);
 							fast = true;
 						}
-					} else if (fast){
+					}
+					//sets speed back to slow when the points are close or at the end of the line
+					else if (fast){
 						setXRPM(xPow);
 						fast = false;
 					}
 				}
 				motor[X_AXIS] = 0;
 				eraseDisplay();
-
 				rowPlotted++;
 			}
 
@@ -382,11 +381,13 @@ task main()
 		}
 		long plotTime = time1[T1];
 		displayTime(1, plotTime);
+		zeroAllAxis();
 
 		//scan(scanArray);
-
 		displayString(3, "Accuracy: %f", 0.82);
 		displayString(12, "Press enter to continue");
+
+		// wait for buttton press to end program
 		while(!getButtonPress(buttonEnter)){}
 		while(getButtonPress(buttonEnter)){}
 		eraseDisplay();
