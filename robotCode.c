@@ -7,8 +7,6 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
-enum Axes {X, Y, Z};
-
 const int POINTS_PER_LINE = 80;
 const int X_SPEED = 7; // mm/s
 const int X_FAST_SPEED_MULT = 3; // mm/s
@@ -17,7 +15,6 @@ const float Z_80_DEG_PER_SEC = 688.4181119; //
 //const float POINT_OFFSET_DISTANCE = POINT_DISTANCE/4.0; // mm
 const int AXIS_STEP = 2; // mm
 const int MAX_X = 160; // mm
-const int MAX_Y = 160; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
 const int MAX_X_ENC = ((MAX_X+2*POINT_DISTANCE)/X_DISTANCE_PER_ROTATION)*360.0;
@@ -67,29 +64,6 @@ int getNextPlottedPointIndex(bool* points, int currentPoint) {
 	if (nextPoint < POINTS_PER_LINE)
 		return nextPoint;
 	return -1;
-}
-
-void zeroAxis(Axes axis){
-	if(axis == X){
-		motor[X_AXIS] = -25;
-		while (!SensorValue[X_LIMIT_SWITCH]){}
-		motor[X_AXIS] = 0;
-		nMotorEncoder[X_AXIS] = 0;
-	} else if (axis == Y){
-		motor[Y_AXIS] = -100;
-		while (!SensorValue[Y_LIMIT_SWITCH]){}
-		motor[Y_AXIS] = 0;
-		nMotorEncoder[Y_AXIS] = 0;
-	} else {
-		// check which direction to zero the z axis in (so we don't plot a point accidentally)
-		if(nMotorEncoder[Z_AXIS]%360 < 180)
-			motor[Z_AXIS] = -50;
-		else
-			motor[Z_AXIS] = 50;
-		while (!SensorValue[Z_LIMIT_SWITCH]){}
-		motor[Z_AXIS] = 0;
-		nMotorEncoder[Z_AXIS] = 0;
-	}
 }
 
 void zeroAllAxis(){
@@ -216,10 +190,13 @@ void pause()
 	// turn off all motors
 	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
 	//give time for button to be released
-	wait1Msec(1000);
+	while(getButtonPress(PAUSE_BUTTON)){}
+	eraseDisplay();
+	displayString(2, "Press enter to continue");
 	// wait for button to be pressed again
 	while(!getButtonPress(PAUSE_BUTTON)){}
 	while(getButtonPress(PAUSE_BUTTON)){}
+	eraseDisplay();
 }
 
 void scan(int*scanArray)
