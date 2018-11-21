@@ -11,6 +11,7 @@ enum Axes {X, Y, Z};
 
 const int POINTS_PER_LINE = 80;
 const int X_SPEED = 7; // mm/s
+const int X_FAST_SPEED_MULT = 3; // mm/s
 const float X_DISTANCE_PER_ROTATION = 25.44 //mm per rotation
 const float Z_80_DEG_PER_SEC = 688.4181119; //
 //const float POINT_OFFSET_DISTANCE = POINT_DISTANCE/4.0; // mm
@@ -19,6 +20,8 @@ const int MAX_X = 160; // mm
 const int MAX_Y = 160; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
+const int MAX_X_ENC = ((MAX_X+2*POINT_DISTANCE)/X_DISTANCE_PER_ROTATION)*360.0;
+const int SLOW_TICKS = 90;
 
 const int DEBOUNCE = 200;
 
@@ -321,7 +324,7 @@ task main()
 
 
 				// FIX THIS LATER --> NO PID RIGHT NOW
-
+				bool fast = false;
 				int xPow = target;
 				if(rowPlotted%2 == 0){
 					xPow = target;
@@ -337,7 +340,7 @@ task main()
 
 
 				int pointNumber = 0;
-				while((nMotorEncoder[X_AXIS] < ((MAX_X+2*POINT_DISTANCE)/X_DISTANCE_PER_ROTATION)*360.0 && rowPlotted%2==0) || (rowPlotted%2==1 && !SensorValue[X_LIMIT_SWITCH])){
+				while((nMotorEncoder[X_AXIS] < MAX_X_ENC && rowPlotted%2==0) || (rowPlotted%2==1 && !SensorValue[X_LIMIT_SWITCH])){
 					// display running time of plot
 					displayTime(1, time1[T1]);
 					// display plot information (row and column)
@@ -356,6 +359,14 @@ task main()
 						while(SensorValue[Z_LIMIT_SWITCH] == 0){}
 						motor[Z_AXIS] = 0;
 						pointNumber++;
+					} else if ((encoderValues[pointNumber] == -1 && abs(nMotorEncoder[X_AXIS]) < (MAX_X_ENC - SLOW_TICKS)) || abs(nMotorEncoder[X_AXIS]) < (encoderValues[pointNumber] - SLOW_TICKS)){
+						if (!fast){
+							setXRPM(xPow*X_FAST_SPEED_MULT);
+							fast = true;
+						}
+					} else if (fast){
+						setXRPM(xPow);
+						fast = false;
 					}
 				}
 				motor[X_AXIS] = 0;
@@ -366,7 +377,7 @@ task main()
 
 			// move y axis to next row
 			// do not do this if we are on the last line
-			if (rowNumber < POINTS_PER_LINE-1)
+			if (rowNumber < rowsToPlot-2)
 				moveYAxis(POINT_DISTANCE);
 		}
 		long plotTime = time1[T1];
