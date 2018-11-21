@@ -9,9 +9,9 @@ const int PAUSE_BUTTON = (int)buttonEnter;
 
 enum Axes {X, Y, Z};
 
-const int POINTS_PER_LINE = 80;
+const int POINTS_PER_LINE = 11;
 const int X_SPEED = 7; // mm/s
-const float X_DISTANCE_PER_ROTATION = 25.44 //mm per rotation
+const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
 const float Z_80_DEG_PER_SEC = 688.4181119; //
 //const float POINT_OFFSET_DISTANCE = POINT_DISTANCE/4.0; // mm
 const int AXIS_STEP = 2; // mm
@@ -26,7 +26,7 @@ const int SCAN_NXN = 3;
 const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
 const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
 
-float lastError = 0, target = X_SPEED*60/25.4, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
+float lastError = 0, target = X_SPEED*60/25.4, kpF = 2, kdF = 0.00, kpR = 1, kdR = 0; //used by PID function
 float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 int pidOutput = 0;
 
@@ -122,17 +122,23 @@ void getEncoderValuesAtPoints(bool* points, int* encoderValues) {
 }
 
 task calculatePID(){
+	TFileHandle fout;
+	openWritePC(fout, "PID_RPM_Vals.txt");
 	while(true){
+		eraseLine(0, 8, 20, 10);
 		float curVal = calculateRPM(X_AXIS);
 		float error = target-curVal;
 		int outputPow = 0;
-		outputPow = error*kpF + lastError*kdF;
-		displayString(3, "Power = %d", outputPow);
-		displayString(4, "Error = %f", error);
+		outputPow = error*kpF + (error-lastError)*kdF;
+		displayString(8, "Power = %d", outputPow);
+		displayString(9, "Error = %f", error);
+		displayString(10 , "CurrentRPM = %f", curVal);
+		writeFloatPC(fout, curVal);
+		writeCharPC(fout, ',');
 		lastError = error;
 		pidOutput = outputPow;
 		setXRPM(outputPow);
-		wait1Msec(10);
+		wait1Msec(50);
 	}
 }
 
@@ -240,7 +246,7 @@ task main()
 	eraseDisplay();
 
 	// confirmation screen that they have uploaded the image they want
-	displayString(1, "If the correct imge is uploaded");
+	displayString(1, "If the correct image is uploaded");
 	displayString(2, "press enter to continue");
 	while(!getButtonPress(buttonEnter)){}
 	while(getButtonPress(buttonEnter)){}
@@ -248,8 +254,9 @@ task main()
 
 	// open file now that user has confirmed it is correct file
 	TFileHandle fin;
-	openReadPC(fin, "test.txt" );
+	openReadPC(fin, "PIDtest.txt" );
 	int rowsToPlot = 0;
+
 	// check that file exists and get the number of rows we are plotting from the file
 	if (!readIntPC(fin, rowsToPlot)){
 		displayString(2, "Could not open point file.");
@@ -289,16 +296,17 @@ task main()
 
 
 				// FIX THIS LATER --> NO PID RIGHT NOW
-
+				/*
 				int xPow = target;
 				if(rowPlotted%2 == 0){
 					xPow = target;
 				}
 				else{
 					xPow = target*-1;
-				}
-				//startTask(calculatePID);
-				setXRPM(xPow);
+				}*/
+				displayString(11, "%f" , target);
+				startTask(calculatePID);
+				//setXRPM(xPow);
 				// set x axis to constant speed -- changes directions based on odd or even row
 
 
