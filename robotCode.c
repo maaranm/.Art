@@ -90,14 +90,36 @@ void zeroAxis(Axes axis){
 }
 
 void zeroAllAxis(){
-	setXRPM(-target);
+	bool firstXHit = false, backedOff = false;
+	motor[X_AXIS] = -100;
 	motor[Z_AXIS] = 80;
 	motor[Y_AXIS] = -100;
-	while(!SensorValue[X_LIMIT_SWITCH] || !SensorValue[Y_LIMIT_SWITCH] || !SensorValue[Z_LIMIT_SWITCH]){
+	while(!SensorValue[X_LIMIT_SWITCH] || !backedOff || (backedOff && !SensorValue[Y_LIMIT_SWITCH]) || !SensorValue[Z_LIMIT_SWITCH]){
 		if (motor[Z_AXIS] && SensorValue[Z_LIMIT_SWITCH])
 			motor[Z_AXIS] = 0;
-		if (motor[X_AXIS] && SensorValue[X_LIMIT_SWITCH])
-			motor[X_AXIS] = 0;
+		if (!firstXHit)
+		{
+			if (motor[X_AXIS] && SensorValue[X_LIMIT_SWITCH])
+			{
+				nMotorEncoder[X_AXIS] = 0;
+				motor[X_AXIS] = 30;
+				firstXHit = true;
+			}
+		}
+		else
+		{
+			if (!backedOff)
+			{
+				if(abs(nMotorEncoder[X_AXIS]) >= 150)
+					backedOff = true;
+			}
+			else
+			{
+				setXRPM(-target);
+				if (motor[Z_AXIS] && SensorValue[Z_LIMIT_SWITCH])
+					motor[X_AXIS] = 0;
+			}
+		}
 		if (motor[Y_AXIS] && SensorValue[Y_LIMIT_SWITCH])
 			motor[Y_AXIS] = 0;
 	}
@@ -229,6 +251,16 @@ void scan(int*scanArray)
 	}
 	zeroAllAxis();
 }
+
+void displayTime(int rowNumber, long time)
+{
+	// convert timer value into hours, minutes, and seconds
+	long hours =  time /3600000, minutes = (time-hours*3600000) / 60000, seconds = ((time-hours*3600000) - minutes*60000) / 1000;
+	// print the time to the display
+	displayString(rowNumber, "Time: %02d:%02d:%02d", hours, minutes, seconds);
+}
+
+
 task main()
 {
 	// display message telling them to select image on PC then transfer file
@@ -282,8 +314,8 @@ task main()
 
 				// zero encoder on z axis so we can zero pen properly
 				nMotorEncoder[Z_AXIS] = 0;
+				// zero encoder of x axis so we can determine when to plot points
 				nMotorEncoder[X_AXIS] = 0;
-				// zero timer so we know when to plot each point
 
 
 
@@ -305,12 +337,12 @@ task main()
 
 
 				int pointNumber = 0;
-				//for (int pointNumber = 0; pointNumber < POINTS_PER_LINE; pointNumber++) {
 				while((nMotorEncoder[X_AXIS] < ((MAX_X+2*POINT_DISTANCE)/X_DISTANCE_PER_ROTATION)*360.0 && rowPlotted%2==0) || (rowPlotted%2==1 && !SensorValue[X_LIMIT_SWITCH])){
-					// FIX THIS LATER --> TIME AS SEPERATE TASK?
-					displayString(1, "Time = %f", time1[T1]/60000.0);
-					displayString(4,"Row Number = %d", rowNumber+1);
-					displayString(5,"Point Number = %d", pointNumber+1);
+					// display running time of plot
+					displayTime(1, time1[T1]);
+					// display plot information (row and column)
+					displayString(4,"Row Number: %d", rowNumber+1);
+					displayString(5,"Point Number: %d", pointNumber+1);
 
 					if(getButtonPress(PAUSE_BUTTON))
 						pause(encoderValues, pointNumber);
@@ -337,10 +369,12 @@ task main()
 			if (rowNumber < POINTS_PER_LINE-1)
 				moveYAxis(POINT_DISTANCE);
 		}
+		long plotTime = time1[T1];
+		displayTime(1, plotTime);
 
 		//scan(scanArray);
 
-		displayString(1, "Accuracy: %f", 0.82);
+		displayString(3, "Accuracy: %f", 0.82);
 		displayString(12, "Press enter to continue");
 		while(!getButtonPress(buttonEnter)){}
 		while(getButtonPress(buttonEnter)){}
