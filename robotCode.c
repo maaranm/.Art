@@ -214,6 +214,25 @@ void pause(float xRPM, bool&fast)
 	fast = false;
 }
 
+void checkPaper()
+{
+	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
+	SensorMode[SCANNER_SENSOR] = modeEV3Color_Color;
+	moveXAxis(6*POINT_DISTANCE);
+	moveYAxis(6*POINT_DISTANCE+55);
+	wait1Msec(100);
+	while(SensorValue[SCANNER_SENSOR] != 1)
+	{
+		eraseDisplay();
+		displayString(4,"Place Paper");
+	}
+	eraseDisplay();
+	displayString(4, "Paper check complete");
+	wait1Msec(2000);
+	zeroAllAxis();
+	eraseDisplay();
+}
+/*
 void scan(int*scanArray)
 {
 	for (int initialize= 0; initialize < SCAN_MATRIX*SCAN_MATRIX; initialize++)
@@ -243,7 +262,7 @@ void scan(int*scanArray)
 	}
 	zeroAllAxis();
 }
-
+*/
 void displayTime(int rowNumber, long time)
 {
 	// convert timer value into hours, minutes, and seconds
@@ -288,8 +307,10 @@ task main()
 		while(getButtonPress(buttonEnter))
 		{}
 	}
+
 	else
 	{
+		checkPaper();
 		// declare two parallel arrays to store whether or not we plot a respective point and to store the speed of the z axis at each point
 		bool points[POINTS_PER_LINE];
 		int encoderValues[POINTS_PER_LINE];
@@ -403,7 +424,7 @@ task main()
 		zeroAllAxis();
 
 		//scan(scanArray);
-		displayString(3, "Accuracy: %f", 0.82);
+		//displayString(3, "Accuracy: %f", 0.82);
 		displayString(12, "Press enter to finish plot");
 
 		// wait for buttton press to end program
