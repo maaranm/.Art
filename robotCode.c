@@ -7,7 +7,7 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
-const string FILE_NAME = "test.txt";
+const string FILE_NAME = "image.txt";
 
 const int POINTS_PER_LINE = 80;
 const int X_SPEED = 7; // mm/s
@@ -269,9 +269,9 @@ task main()
 	eraseDisplay();
 
 	// confirmation screen that they have uploaded the image they want
-	displayString(1, "If the correct imge is");
-	displayString(2, "uploaded, press enter");
-	displayString(3, "to continue");
+	displayString(1, "Verify that image is");
+	displayString(2, "uploaded to EV3");
+	displayString(12, "Press enter to continue");
 	while(!getButtonPress(buttonEnter))
 	{}
 	while(getButtonPress(buttonEnter))
@@ -285,7 +285,7 @@ task main()
 	// check that file exists and get the number of rows we are plotting from the file
 	if (!readIntPC(fin, rowsToPlot)){
 		displayString(1, "Could not open image file");
-		displayString(2, "Press enter to end program");
+		displayString(12, "Press enter to end program");
 		while(!getButtonPress(buttonEnter))
 		{}
 		while(getButtonPress(buttonEnter))
@@ -307,8 +307,8 @@ task main()
 		zeroAllAxis();
 		// confirmation screen that they have placed the paper correctly
 		displayString(1, "Place paper in correct");
-		displayString(2, "location then press enter");
-		displayString(3, "to start plot");
+		displayString(2, "location");
+		displayString(12, "Press enter to start plot");
 		while(!getButtonPress(buttonAny))
 		{}
 		while(getButtonPress(buttonAny))
@@ -397,6 +397,7 @@ task main()
 			if (rowNumber < rowsToPlot-1)
 				moveYAxis(POINT_DISTANCE);
 		}
+		eraseDisplay();
 		long plotTime = time1[T1];
 		displayTime(1, plotTime);
 		zeroAllAxis();
