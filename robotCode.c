@@ -7,8 +7,6 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
-const string FILE_NAME = "image.txt";
-
 const int POINTS_PER_LINE = 80;
 const int X_SPEED = 7; // mm/s
 const int X_FAST_SPEED_MULT = 20;
@@ -280,7 +278,7 @@ task main()
 
 	// open file now that user has confirmed it is correct file
 	TFileHandle fin;
-	openReadPC(fin, FILE_NAME);
+	openReadPC(fin, "image.txt");
 	int rowsToPlot = 0;
 	// check that file exists and get the number of rows we are plotting from the file
 	if (!readIntPC(fin, rowsToPlot)){
