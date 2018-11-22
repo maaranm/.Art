@@ -71,7 +71,7 @@ void zeroAllAxis(){
 	motor[X_AXIS] = -100;
 	motor[Z_AXIS] = 80;
 	motor[Y_AXIS] = -100;
-	while(!SensorValue[X_LIMIT_SWITCH] || !backedOff || (backedOff && !SensorValue[Y_LIMIT_SWITCH]) || !SensorValue[Z_LIMIT_SWITCH]){
+	while(!SensorValue[Y_LIMIT_SWITCH] || !backedOff || (backedOff && !SensorValue[X_LIMIT_SWITCH]) || !SensorValue[Z_LIMIT_SWITCH]){
 		if (motor[Z_AXIS] && SensorValue[Z_LIMIT_SWITCH])
 			motor[Z_AXIS] = 0;
 		if (!firstXHit)
@@ -79,7 +79,7 @@ void zeroAllAxis(){
 			if (motor[X_AXIS] && SensorValue[X_LIMIT_SWITCH])
 			{
 				nMotorEncoder[X_AXIS] = 0;
-				motor[X_AXIS] = 30;
+				motor[X_AXIS] = 40;
 				firstXHit = true;
 			}
 		}
@@ -88,12 +88,14 @@ void zeroAllAxis(){
 			if (!backedOff)
 			{
 				if(abs(nMotorEncoder[X_AXIS]) >= 150)
+				{
 					backedOff = true;
+					setXRPM(-target);
+				}
 			}
 			else
 			{
-				setXRPM(-target);
-				if (motor[Z_AXIS] && SensorValue[Z_LIMIT_SWITCH])
+				if (motor[X_AXIS] && SensorValue[X_LIMIT_SWITCH])
 					motor[X_AXIS] = 0;
 			}
 		}
