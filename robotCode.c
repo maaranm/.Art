@@ -7,8 +7,8 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
-const int POINTS_PER_LINE = 80;
-const int X_SPEED = 7; // mm/s
+const int POINTS_PER_LINE = 120;
+const float X_SPEED = 5.5; // mm/s
 const int X_FAST_SPEED_MULT = 20;
 const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
 const float Z_80_DEG_PER_SEC = 688.4181119; //
