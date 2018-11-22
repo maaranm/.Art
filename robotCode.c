@@ -22,7 +22,7 @@ const int SLOW_TICKS = 180;
 
 const int DEBOUNCE = 200;
 
-const int SCAN_NXN = 3;
+const int SCAN_NXN = int(24.0/POINT_DISTANCE +0.5);// tested the colour sensor to determine size of the scannable matrix -- divide by point distance
 const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
 const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
 
@@ -224,11 +224,11 @@ void scan(int*scanArray)
 		scanArray[initialize] = 0 ;
 	}
 
-	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
-	SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
+	SensorType[SCANNER_SENSOR] = sensorLightActive;
+	// SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
 	zeroAllAxis();
-	moveXAxis(POINT_DISTANCE); // change these values
-	moveYAxis(POINT_DISTANCE + 55);
+	moveXAxis(6*POINT_DISTANCE); // change these values
+	moveYAxis(6*POINT_DISTANCE + 55);
 	int direction = 1;
 
 	int arrayIndex = 0;
