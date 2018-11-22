@@ -7,9 +7,11 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
+const string FILE_NAME = "test.txt";
+
 const int POINTS_PER_LINE = 80;
 const int X_SPEED = 7; // mm/s
-const int X_FAST_SPEED_MULT = 3; // mm/s
+const int X_FAST_SPEED_MULT = 20;
 const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
 const float Z_80_DEG_PER_SEC = 688.4181119; //
 //const float POINT_OFFSET_DISTANCE = POINT_DISTANCE/4.0; // mm
@@ -18,7 +20,7 @@ const int MAX_X = 160; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const float TIME_BETWEEN_POINTS = POINT_DISTANCE / X_SPEED; // s - time between adjacent points
 const int MAX_X_ENC = ((MAX_X+2*POINT_DISTANCE)/X_DISTANCE_PER_ROTATION)*360.0;
-const int SLOW_TICKS = 90;
+const int SLOW_TICKS = 180;
 
 const int DEBOUNCE = 200;
 
@@ -187,7 +189,7 @@ void moveXAxis (int distance)
 	motor[X_AXIS]= 0;
 }
 
-void pause()
+void pause(float xRPM, bool&fast)
 {
 	// turn off all motors
 	motor[X_AXIS] = motor[Y_AXIS] = motor[Z_AXIS] = 0;
@@ -199,6 +201,8 @@ void pause()
 	while(!getButtonPress(PAUSE_BUTTON)){}
 	while(getButtonPress(PAUSE_BUTTON)){}
 	eraseDisplay();
+	setXRPM(xRPM);
+	fast = false;
 }
 
 void scan(int*scanArray)
@@ -259,7 +263,7 @@ task main()
 
 	// open file now that user has confirmed it is correct file
 	TFileHandle fin;
-	openReadPC(fin, "test.txt" );
+	openReadPC(fin, "test.txt");
 	int rowsToPlot = 0;
 	// check that file exists and get the number of rows we are plotting from the file
 	if (!readIntPC(fin, rowsToPlot)){
@@ -322,7 +326,7 @@ task main()
 					displayString(5,"Point Number: %d", pointNumber+1);
 
 					if(getButtonPress(PAUSE_BUTTON))
-						pause();
+						pause(xPow, fast);
 
 					// plot the point if we should
 					if (encoderValues[pointNumber] != -1 && abs(nMotorEncoder[X_AXIS]) >= encoderValues[pointNumber])
@@ -339,6 +343,7 @@ task main()
 						//only sets motor power if it is not already fast
 						if (!fast){
 							setXRPM(xPow*X_FAST_SPEED_MULT);
+						//setXRPM(xPow*X_FAST_SPEED_MULT);
 							fast = true;
 						}
 					}
