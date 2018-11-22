@@ -14,7 +14,6 @@ const int X_SPEED = 7; // mm/s
 const int X_FAST_SPEED_MULT = 20;
 const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
 const float Z_80_DEG_PER_SEC = 688.4181119; //
-//const float POINT_OFFSET_DISTANCE = POINT_DISTANCE/4.0; // mm
 const int AXIS_STEP = 2; // mm
 const int MAX_X = 160; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
