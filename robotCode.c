@@ -366,7 +366,10 @@ task main()
 						wait1Msec(DEBOUNCE);
 						while(SensorValue[Z_LIMIT_SWITCH] == 0){}
 						motor[Z_AXIS] = 0;
-						pointNumber++;
+						if(pointNumber == POINTS_PER_LINE-1)
+							encoderValues[pointNumber] == -1;
+						else
+							pointNumber++;
 					}
 					// checks if there are no more points or if the points are far awaw
 					else if ((encoderValues[pointNumber] == -1 && abs(nMotorEncoder[X_AXIS]) < (MAX_X_ENC - SLOW_TICKS)) || abs(nMotorEncoder[X_AXIS]) < (encoderValues[pointNumber] - SLOW_TICKS))
