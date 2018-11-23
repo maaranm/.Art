@@ -8,7 +8,7 @@ const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
 const int POINTS_PER_LINE = 120;
-const int X_SPEED = 7; // mm/s
+const float X_SPEED = 5.5; // mm/s
 const int X_FAST_SPEED_MULT = 20;
 const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
 const float Z_80_DEG_PER_SEC = 688.4181119;
@@ -215,6 +215,26 @@ void pause(float xRPM, bool&fast)
 	fast = false;
 }
 
+void checkPaper()
+{
+	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
+	SensorMode[SCANNER_SENSOR] = modeEV3Color_Color;
+	wait1Msec(50);
+	moveXAxis(12*POINT_DISTANCE);
+	moveYAxis(6*POINT_DISTANCE+55);
+	wait1Msec(100);
+	eraseDisplay();
+	while(SensorValue[SCANNER_SENSOR] != (int)colorWhite)
+	{
+		displayString(4,"Place Paper");
+		displayString(5, "COlor = %d", SensorValue[SCANNER_SENSOR]);
+	}
+	eraseDisplay();
+	displayString(4, "Paper check complete");
+	wait1Msec(2000);
+	zeroAllAxis();
+	eraseDisplay();
+}
 void scan(int scanLines)
 {
 	for (int initialize= 0; initialize < SCAN_PER_LINE*SCAN_Y_MATRIX; initialize++)
@@ -251,7 +271,7 @@ void scan(int scanLines)
 	}
 	zeroAllAxis();
 }
-
+*/
 void displayTime(int rowNumber, long time)
 {
 	// convert timer value into hours, minutes, and seconds
@@ -299,9 +319,9 @@ task main()
 	eraseDisplay();
 
 	// confirmation screen that they have uploaded the image they want
-	displayString(1, "If the correct imge is");
-	displayString(2, "uploaded, press enter");
-	displayString(3, "to continue");
+	displayString(1, "Verify that image is");
+	displayString(2, "uploaded to EV3");
+	displayString(12, "Press enter to continue");
 	while(!getButtonPress(buttonEnter))
 	{}
 	while(getButtonPress(buttonEnter))
@@ -315,12 +335,13 @@ task main()
 	// check that file exists and get the number of rows we are plotting from the file
 	if (!readIntPC(fin, rowsToPlot)){
 		displayString(1, "Could not open image file");
-		displayString(2, "Press enter to end program");
+		displayString(12, "Press enter to end program");
 		while(!getButtonPress(buttonEnter))
 		{}
 		while(getButtonPress(buttonEnter))
 		{}
 	}
+
 	else
 	{
 		// declare two parallel arrays to store whether or not we plot a respective point and to store the speed of the z axis at each point
@@ -336,9 +357,8 @@ task main()
 		// zero the axes
 		zeroAllAxis();
 		// confirmation screen that they have placed the paper correctly
-		displayString(1, "Place paper in correct");
-		displayString(2, "location then press enter");
-		displayString(3, "to start plot");
+		checkPaper();
+		displayString(12, "Press enter to start plot");
 		while(!getButtonPress(buttonAny))
 		{}
 		while(getButtonPress(buttonAny))
@@ -403,7 +423,10 @@ task main()
 						wait1Msec(DEBOUNCE);
 						while(SensorValue[Z_LIMIT_SWITCH] == 0){}
 						motor[Z_AXIS] = 0;
-						pointNumber++;
+						if(pointNumber == POINTS_PER_LINE-1)
+							encoderValues[pointNumber] == -1;
+						else
+							pointNumber++;
 					}
 					// checks if there are no more points or if the points are far awaw
 					else if ((encoderValues[pointNumber] == -1 && abs(nMotorEncoder[X_AXIS]) < (MAX_X_ENC - SLOW_TICKS)) || abs(nMotorEncoder[X_AXIS]) < (encoderValues[pointNumber] - SLOW_TICKS))
@@ -432,6 +455,7 @@ task main()
 			if (rowNumber < rowsToPlot-1)
 				moveYAxis(POINT_DISTANCE);
 		}
+		eraseDisplay();
 		long plotTime = time1[T1];
 		displayTime(1, plotTime);
 		zeroAllAxis();
