@@ -217,14 +217,13 @@ void pause(float xRPM, bool&fast)
 
 void checkPaper()
 {
-	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
-	SensorMode[SCANNER_SENSOR] = modeEV3Color_Color;
+	SensorType[SCANNER_SENSOR] = sensorLightActive;
 	wait1Msec(50);
-	moveXAxis(12*POINT_DISTANCE);
-	moveYAxis(6*POINT_DISTANCE+55);
+	moveXAxis(12*POINT_DISTANCE+50);
+	moveYAxis(6*POINT_DISTANCE+80);
 	wait1Msec(100);
 	eraseDisplay();
-	while(SensorValue[SCANNER_SENSOR] != (int)colorWhite)
+	while(SensorValue[SCANNER_SENSOR] < 50)
 	{
 		displayString(4,"Place Paper");
 		displayString(5, "COlor = %d", SensorValue[SCANNER_SENSOR]);
@@ -271,7 +270,7 @@ void scan(int scanLines)
 	}
 	zeroAllAxis();
 }
-*/
+
 void displayTime(int rowNumber, long time)
 {
 	// convert timer value into hours, minutes, and seconds
@@ -367,11 +366,6 @@ task main()
 
 		//*************************************** START PLOTTING POINTS ***************************************//
 		// zero timer to track running time of plot
-
-
-
-
-		/*
 		time1[T1] = 0;
 		for(int rowNumber = 0, rowPlotted = 0; rowNumber < rowsToPlot; rowNumber++)
 		{
@@ -460,10 +454,6 @@ task main()
 		displayTime(1, plotTime);
 		zeroAllAxis();
 
-
-
-
-		*/
 		int scanLines = (int)(1.0*rowsToPlot*POINT_DISTANCE/SCAN_NXN +0.5);
 		eraseDisplay();
 		displayString(10, "%d,%d", SCAN_PER_LINE, scanLines);
