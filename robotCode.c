@@ -245,8 +245,8 @@ void scan(int scanLines)
 			arrayIndex++;
 			displayString(1, "%d", arrayIndex);
 		}
-
-		moveYAxis(SCAN_NXN);
+		if(scanY < scanLines-1)
+			moveYAxis(SCAN_NXN);
 		direction *= -1 ;
 	}
 	zeroAllAxis();
@@ -263,7 +263,7 @@ void displayTime(int rowNumber, long time)
 
 float scanEval( short int*scanArray, TFileHandle & fin, int scanLines)
 {
-	const int TOL = 5;
+	const int TOL = 50;
 	int accurate = 0;
 	for ( int count = 0 ; count < SCAN_PER_LINE*scanLines; count ++ )
 	{
