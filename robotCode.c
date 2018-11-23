@@ -7,30 +7,28 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
-const string FILE_NAME = "test.txt";
-
-const int POINTS_PER_LINE = 80;
+const int POINTS_PER_LINE = 120;
 const int X_SPEED = 7; // mm/s
 const int X_FAST_SPEED_MULT = 20;
 const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
-const float Z_80_DEG_PER_SEC = 688.4181119; //
-const int AXIS_STEP = 2; // mm
+const float Z_80_DEG_PER_SEC = 688.4181119;
 const int MAX_X = 160; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const int MAX_X_ENC = ((MAX_X+2*POINT_DISTANCE)/X_DISTANCE_PER_ROTATION)*360.0;
 const int SLOW_TICKS = 180;
 
-const int DEBOUNCE = 200;
+const int DEBOUNCE = 200; // touch sensor debounce
 
-const int SCAN_NXN = int(24.0/POINT_DISTANCE +0.5);// tested the colour sensor to determine size of the scannable matrix -- divide by point distance
-const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
-const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
+// tested the colour sensor to determine size of the scannable matrix -- divide by point distance
+const int SCAN_NXN = 24;
+const int SCAN_PER_LINE = 1.0*MAX_X/SCAN_NXN +0.5;
+const int SCAN_Y_MATRIX = 1.5*SCAN_PER_LINE +0.5;
 
 float lastError = 0, target = X_SPEED*60/25.4, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
 float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 int pidOutput = 0;
 
-short int scanArray[SCAN_MATRIX][SCAN_MATRIX];
+short int scanArray[SCAN_PER_LINE*SCAN_Y_MATRIX];
 
 #include "PC_FileIO.c"
 
@@ -184,7 +182,7 @@ void moveXAxis (int distance)
 	const float PINION_CIRC = 25.44; //mm
 	const float ENC_LIMIT = abs(distance)*360/PINION_CIRC; //mm*(deg*rot-1)*(mm-1*rot)
 
-	int motorSpeed = 20;
+	int motorSpeed = 80;
 
 	if (distance <0)
 		motorSpeed *= -1;
@@ -217,11 +215,11 @@ void pause(float xRPM, bool&fast)
 	fast = false;
 }
 
-void scan(int*scanArray)
+void scan(int scanLines)
 {
-	for (int initialize= 0; initialize < SCAN_MATRIX*SCAN_MATRIX; initialize++)
+	for (int initialize= 0; initialize < SCAN_PER_LINE*SCAN_Y_MATRIX; initialize++)
 	{
-		scanArray[initialize] = 0 ;
+		scanArray[initialize] = 0;
 	}
 
 	SensorType[SCANNER_SENSOR] = sensorLightActive;
@@ -232,16 +230,23 @@ void scan(int*scanArray)
 	int direction = 1;
 
 	int arrayIndex = 0;
-	for (int scanY = 0 ; scanY < SCAN_MATRIX; scanY++)
+	for (int scanY = 0 ; scanY < scanLines; scanY++)
 	{
-		for (int scanX = 0; scanX < SCAN_MATRIX; scanX++)
+		displayString(2, "%d", scanY);
+		wait1Msec(200);
+		scanArray[arrayIndex] = (short int)((SensorValue[SCANNER_SENSOR]-10)*255.0/55.0);
+		arrayIndex++;
+		displayString(1, "%d", arrayIndex);
+		for (int scanX = 0; scanX < SCAN_PER_LINE-1; scanX++)
 		{
-			scanArray[arrayIndex] = SensorValue[SCANNER_SENSOR];
-			moveXAxis(direction * SCAN_STEP);
+			moveXAxis(direction * SCAN_NXN);
+			wait1Msec(200);
+			scanArray[arrayIndex] = (short int)((SensorValue[SCANNER_SENSOR]-10)*255.0/55.0);
 			arrayIndex++;
+			displayString(1, "%d", arrayIndex);
 		}
 
-		moveYAxis(SCAN_STEP);
+		moveYAxis(SCAN_NXN);
 		direction *= -1 ;
 	}
 	zeroAllAxis();
@@ -256,11 +261,11 @@ void displayTime(int rowNumber, long time)
 }
 
 
-float scanEval( int*scanArray, TFileHandle & fin)
+float scanEval( short int*scanArray, TFileHandle & fin, int scanLines)
 {
 	const int TOL = 5;
 	int accurate = 0;
-	for ( int count = 0 ; count < SCAN_MATRIX * SCAN_MATRIX; count ++ )
+	for ( int count = 0 ; count < SCAN_PER_LINE*scanLines; count ++ )
 	{
 		int origImage =0;
 		readIntPC(fin, origImage);
@@ -268,7 +273,7 @@ float scanEval( int*scanArray, TFileHandle & fin)
 			accurate ++;
 	}
 
-	return accurate*100.0/ (SCAN_MATRIX*SCAN_MATRIX):
+	return accurate*100.0/ (SCAN_PER_LINE*scanLines);
 }
 
 
@@ -305,7 +310,7 @@ task main()
 
 	// open file now that user has confirmed it is correct file
 	TFileHandle fin;
-	openReadPC(fin, FILE_NAME);
+	openReadPC(fin, "image.txt");
 	int rowsToPlot = 0;
 	// check that file exists and get the number of rows we are plotting from the file
 	if (!readIntPC(fin, rowsToPlot)){
@@ -342,6 +347,11 @@ task main()
 
 		//*************************************** START PLOTTING POINTS ***************************************//
 		// zero timer to track running time of plot
+
+
+
+
+		/*
 		time1[T1] = 0;
 		for(int rowNumber = 0, rowPlotted = 0; rowNumber < rowsToPlot; rowNumber++)
 		{
@@ -426,8 +436,16 @@ task main()
 		displayTime(1, plotTime);
 		zeroAllAxis();
 
-		//scan(scanArray);
-		displayString(3, "Accuracy: %f", 0.82);
+
+
+
+		*/
+		int scanLines = (int)(1.0*rowsToPlot*POINT_DISTANCE/SCAN_NXN +0.5);
+		eraseDisplay();
+		displayString(10, "%d,%d", SCAN_PER_LINE, scanLines);
+		scan(scanLines);
+
+		displayString(3, "Accuracy: %f", scanEval(scanArray, fin, scanLines));
 		displayString(12, "Press enter to finish plot");
 
 		// wait for buttton press to end program
