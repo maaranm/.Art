@@ -218,13 +218,15 @@ void checkPaper()
 {
 	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
 	SensorMode[SCANNER_SENSOR] = modeEV3Color_Color;
-	moveXAxis(6*POINT_DISTANCE);
+	wait1Msec(50);
+	moveXAxis(12*POINT_DISTANCE);
 	moveYAxis(6*POINT_DISTANCE+55);
 	wait1Msec(100);
-	while(SensorValue[SCANNER_SENSOR] != 1)
+	eraseDisplay();
+	while(SensorValue[SCANNER_SENSOR] != (int)colorWhite)
 	{
-		eraseDisplay();
 		displayString(4,"Place Paper");
+		displayString(5, "COlor = %d", SensorValue[SCANNER_SENSOR]);
 	}
 	eraseDisplay();
 	displayString(4, "Paper check complete");
@@ -310,7 +312,6 @@ task main()
 
 	else
 	{
-		checkPaper();
 		// declare two parallel arrays to store whether or not we plot a respective point and to store the speed of the z axis at each point
 		bool points[POINTS_PER_LINE];
 		int encoderValues[POINTS_PER_LINE];
@@ -324,8 +325,7 @@ task main()
 		// zero the axes
 		zeroAllAxis();
 		// confirmation screen that they have placed the paper correctly
-		displayString(1, "Place paper in correct");
-		displayString(2, "location");
+		checkPaper();
 		displayString(12, "Press enter to start plot");
 		while(!getButtonPress(buttonAny))
 		{}
