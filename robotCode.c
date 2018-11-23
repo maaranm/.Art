@@ -11,23 +11,24 @@ const int POINTS_PER_LINE = 120;
 const float X_SPEED = 5.5; // mm/s
 const int X_FAST_SPEED_MULT = 20;
 const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
-const float Z_80_DEG_PER_SEC = 688.4181119; //
+const float Z_80_DEG_PER_SEC = 688.4181119;
 const int MAX_X = 160; // mm
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const int MAX_X_ENC = ((MAX_X+2*POINT_DISTANCE)/X_DISTANCE_PER_ROTATION)*360.0;
 const int SLOW_TICKS = 180;
 
-const int DEBOUNCE = 200;
+const int DEBOUNCE = 200; // touch sensor debounce
 
-const int SCAN_NXN = 3;
-const int SCAN_STEP = SCAN_NXN * POINT_DISTANCE;
-const int SCAN_MATRIX = POINTS_PER_LINE/SCAN_NXN;
+// tested the colour sensor to determine size of the scannable matrix -- divide by point distance
+const int SCAN_NXN = 24;
+const int SCAN_PER_LINE = 1.0*MAX_X/SCAN_NXN +0.5;
+const int SCAN_Y_MATRIX = 1.5*SCAN_PER_LINE +0.5;
 
 float lastError = 0, target = X_SPEED*60/25.4, kpF = 2, kdF = 0.05, kpR = 1, kdR = 0; //used by PID function
 float lastEncVal = 0, lastTimeVal = 0; //used by RPM calculation
 int pidOutput = 0;
 
-short int scanArray[SCAN_MATRIX][SCAN_MATRIX];
+short int scanArray[SCAN_PER_LINE*SCAN_Y_MATRIX];
 
 #include "PC_FileIO.c"
 
@@ -181,7 +182,7 @@ void moveXAxis (int distance)
 	const float PINION_CIRC = 25.44; //mm
 	const float ENC_LIMIT = abs(distance)*360/PINION_CIRC; //mm*(deg*rot-1)*(mm-1*rot)
 
-	int motorSpeed = 20;
+	int motorSpeed = 80;
 
 	if (distance <0)
 		motorSpeed *= -1;
@@ -216,14 +217,13 @@ void pause(float xRPM, bool&fast)
 
 void checkPaper()
 {
-	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
-	SensorMode[SCANNER_SENSOR] = modeEV3Color_Color;
+	SensorType[SCANNER_SENSOR] = sensorLightActive;
 	wait1Msec(50);
-	moveXAxis(12*POINT_DISTANCE);
-	moveYAxis(6*POINT_DISTANCE+55);
+	moveXAxis(12*POINT_DISTANCE+50);
+	moveYAxis(6*POINT_DISTANCE+80);
 	wait1Msec(100);
 	eraseDisplay();
-	while(SensorValue[SCANNER_SENSOR] != (int)colorWhite)
+	while(SensorValue[SCANNER_SENSOR] < 50)
 	{
 		displayString(4,"Place Paper");
 		displayString(5, "COlor = %d", SensorValue[SCANNER_SENSOR]);
@@ -234,37 +234,43 @@ void checkPaper()
 	zeroAllAxis();
 	eraseDisplay();
 }
-/*
-void scan(int*scanArray)
+void scan(int scanLines)
 {
-	for (int initialize= 0; initialize < SCAN_MATRIX*SCAN_MATRIX; initialize++)
+	for (int initialize= 0; initialize < SCAN_PER_LINE*SCAN_Y_MATRIX; initialize++)
 	{
-		scanArray[initialize] = 0 ;
+		scanArray[initialize] = 0;
 	}
 
-	SensorType[SCANNER_SENSOR] = sensorEV3_Color;
-	SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
+	SensorType[SCANNER_SENSOR] = sensorLightActive;
+	// SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
 	zeroAllAxis();
-	moveXAxis(POINT_DISTANCE); // change these values
-	moveYAxis(POINT_DISTANCE);
+	moveXAxis(6*POINT_DISTANCE); // change these values
+	moveYAxis(6*POINT_DISTANCE + 55);
 	int direction = 1;
 
 	int arrayIndex = 0;
-	for (int scanY = 0 ; scanY < SCAN_MATRIX; scanY++)
+	for (int scanY = 0 ; scanY < scanLines; scanY++)
 	{
-		for (int scanX = 0; scanX < SCAN_MATRIX; scanX++)
+		displayString(2, "%d", scanY);
+		wait1Msec(200);
+		scanArray[arrayIndex] = (short int)((SensorValue[SCANNER_SENSOR]-10)*255.0/55.0);
+		arrayIndex++;
+		displayString(1, "%d", arrayIndex);
+		for (int scanX = 0; scanX < SCAN_PER_LINE-1; scanX++)
 		{
-			scanArray[arrayIndex] = SensorValue[SCANNER_SENSOR];
-			moveXAxis(direction * SCAN_STEP);
+			moveXAxis(direction * SCAN_NXN);
+			wait1Msec(200);
+			scanArray[arrayIndex] = (short int)((SensorValue[SCANNER_SENSOR]-10)*255.0/55.0);
 			arrayIndex++;
+			displayString(1, "%d", arrayIndex);
 		}
-
-		moveYAxis(SCAN_STEP);
+		if(scanY < scanLines-1)
+			moveYAxis(SCAN_NXN);
 		direction *= -1 ;
 	}
 	zeroAllAxis();
 }
-*/
+
 void displayTime(int rowNumber, long time)
 {
 	// convert timer value into hours, minutes, and seconds
@@ -272,6 +278,31 @@ void displayTime(int rowNumber, long time)
 	// print the time to the display
 	displayString(rowNumber, "Time: %02d:%02d:%02d", hours, minutes, seconds);
 }
+
+
+float scanEval( short int*scanArray, TFileHandle & fin, int scanLines)
+{
+	const int TOL = 50;
+	int accurate = 0;
+	for ( int count = 0 ; count < SCAN_PER_LINE*scanLines; count ++ )
+	{
+		int origImage =0;
+		readIntPC(fin, origImage);
+		if (abs(scanArray[count] - origImage) < TOL)
+			accurate ++;
+	}
+
+	return accurate*100.0/ (SCAN_PER_LINE*scanLines);
+}
+
+
+
+
+
+
+
+
+
 
 
 task main()
@@ -423,8 +454,12 @@ task main()
 		displayTime(1, plotTime);
 		zeroAllAxis();
 
-		//scan(scanArray);
-		//displayString(3, "Accuracy: %f", 0.82);
+		int scanLines = (int)(1.0*rowsToPlot*POINT_DISTANCE/SCAN_NXN +0.5);
+		eraseDisplay();
+		displayString(10, "%d,%d", SCAN_PER_LINE, scanLines);
+		scan(scanLines);
+
+		displayString(3, "Accuracy: %f", scanEval(scanArray, fin, scanLines));
 		displayString(12, "Press enter to finish plot");
 
 		// wait for buttton press to end program
