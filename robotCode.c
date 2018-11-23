@@ -7,15 +7,17 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
-const int POINTS_PER_LINE = 120;
-const float X_SPEED = 5.5; // mm/s
+const int POINTS_PER_LINE = 80; //80
+const float X_SPEED = 7; // mm/s
 const int X_FAST_SPEED_MULT = 20;
 const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
 const float Z_80_DEG_PER_SEC = 688.4181119;
-const int MAX_X = 160; // mm
+const int MAX_X = 160; // mm 160
 const float POINT_DISTANCE = 1.0*MAX_X/POINTS_PER_LINE; // mm - distance between adjacent points
 const int MAX_X_ENC = ((MAX_X+2*POINT_DISTANCE)/X_DISTANCE_PER_ROTATION)*360.0;
 const int SLOW_TICKS = 180;
+
+float encLimit=0; //For the Y axis
 
 const int DEBOUNCE = 200; // touch sensor debounce
 
@@ -161,17 +163,17 @@ void moveYAxis(int distance)
 {
 	const float WHEEL_DIA= 42.5; //mm
 	const float GEAR_RATIO = 25.0/1.0; 	// geared down 25 to 1
-	const float ENC_LIMIT= abs(distance)/(PI*WHEEL_DIA)*360*GEAR_RATIO;
-	int motorSpeed = 90;
+	encLimit += abs(distance)/(PI*WHEEL_DIA)*360*GEAR_RATIO;
+	int motorSpeed = 50;
 	int hault = 0;
 
 	if (distance <0)
 		motorSpeed *= -1;
 
-	nMotorEncoder[Y_AXIS]=0;
+	//nMotorEncoder[Y_AXIS]=0; //don't need this because encoder target/limit is a added onto
 	motor[Y_AXIS]= motorSpeed;
 
-	while (abs(nMotorEncoder[Y_AXIS]) <= ENC_LIMIT)
+	while (abs(nMotorEncoder[Y_AXIS]) <= encLimit)
 	{}
 
 	motor[Y_AXIS]= hault;
@@ -244,7 +246,7 @@ void scan(int scanLines)
 	SensorType[SCANNER_SENSOR] = sensorLightActive;
 	// SensorMode[SCANNER_SENSOR] = modeEV3Color_Ambient;
 	zeroAllAxis();
-	moveXAxis(6*POINT_DISTANCE); // change these values
+	moveXAxis(6*POINT_DISTANCE+8); // change these values
 	moveYAxis(6*POINT_DISTANCE + 55);
 	int direction = 1;
 
@@ -255,14 +257,12 @@ void scan(int scanLines)
 		wait1Msec(200);
 		scanArray[arrayIndex] = (short int)((SensorValue[SCANNER_SENSOR]-10)*255.0/55.0);
 		arrayIndex++;
-		displayString(1, "%d", arrayIndex);
 		for (int scanX = 0; scanX < SCAN_PER_LINE-1; scanX++)
 		{
 			moveXAxis(direction * SCAN_NXN);
 			wait1Msec(200);
 			scanArray[arrayIndex] = (short int)((SensorValue[SCANNER_SENSOR]-10)*255.0/55.0);
 			arrayIndex++;
-			displayString(1, "%d", arrayIndex);
 		}
 		if(scanY < scanLines-1)
 			moveYAxis(SCAN_NXN);
@@ -363,9 +363,11 @@ task main()
 		while(getButtonPress(buttonAny))
 		{}
 		eraseDisplay();
+		encLimit = 0;
 
 		//*************************************** START PLOTTING POINTS ***************************************//
 		// zero timer to track running time of plot
+
 		time1[T1] = 0;
 		for(int rowNumber = 0, rowPlotted = 0; rowNumber < rowsToPlot; rowNumber++)
 		{
@@ -447,13 +449,14 @@ task main()
 			// move y axis to next row
 			// do not do this if we are on the last line
 			if (rowNumber < rowsToPlot-1)
-				moveYAxis(POINT_DISTANCE);
+				moveYAxis(POINT_DISTANCE); //1.2375 is because image was becoming squished //not needed
 		}
+
 		eraseDisplay();
 		long plotTime = time1[T1];
 		displayTime(1, plotTime);
 		zeroAllAxis();
-
+		encLimit = 0;
 		int scanLines = (int)(1.0*rowsToPlot*POINT_DISTANCE/SCAN_NXN +0.5);
 		eraseDisplay();
 		displayString(10, "%d,%d", SCAN_PER_LINE, scanLines);
