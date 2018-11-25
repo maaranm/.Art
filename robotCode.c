@@ -7,8 +7,8 @@ const tSensors Z_LIMIT_SWITCH = S3;
 const tSensors SCANNER_SENSOR = S4;
 const int PAUSE_BUTTON = (int)buttonEnter;
 
-const int POINTS_PER_LINE = 80; //80
-const float X_SPEED = 7; // mm/s
+const int POINTS_PER_LINE = 120; //80
+const float X_SPEED = 5.5; // mm/s
 const int X_FAST_SPEED_MULT = 20;
 const float X_DISTANCE_PER_ROTATION = 25.44; //mm per rotation
 const float Z_80_DEG_PER_SEC = 688.4181119;
@@ -120,7 +120,7 @@ void getEncoderValuesAtPoints(bool* points, int* encoderValues)
 
 	while((nextPlottedPoint = getNextPlottedPointIndex(points, nextPlottedPoint)) != -1)
 	{
-		float encoderValAtNextPoint = ((nextPlottedPoint+2)*POINT_DISTANCE-180.0/Z_80_DEG_PER_SEC*X_SPEED)/X_DISTANCE_PER_ROTATION*360.0;
+		float encoderValAtNextPoint = ((nextPlottedPoint+2)*POINT_DISTANCE-180.0/Z_80_DEG_PER_SEC*X_SPEED*0.637)/X_DISTANCE_PER_ROTATION*360.0;
 		encoderValues[plottedPointNum] = encoderValAtNextPoint;
 		plottedPointNum++;
 	}
@@ -164,7 +164,7 @@ void moveYAxis(int distance)
 	const float WHEEL_DIA= 42.5; //mm
 	const float GEAR_RATIO = 25.0/1.0; 	// geared down 25 to 1
 	encLimit += abs(distance)/(PI*WHEEL_DIA)*360*GEAR_RATIO;
-	int motorSpeed = 50;
+	int motorSpeed = 100;
 	int hault = 0;
 
 	if (distance <0)
@@ -175,6 +175,8 @@ void moveYAxis(int distance)
 
 	while (abs(nMotorEncoder[Y_AXIS]) <= encLimit)
 	{}
+	motor[Y_AXIS] = motorSpeed/5;
+	wait1Msec(500);
 
 	motor[Y_AXIS]= hault;
 }
@@ -347,16 +349,11 @@ task main()
 		bool points[POINTS_PER_LINE];
 		int encoderValues[POINTS_PER_LINE];
 		// initialize both arrays (encoder values is -1 since we make -1 equal to no points left to plot in line)
-		for (int index = 0; index < POINTS_PER_LINE; index++)
-		{
-			points[index] = false;
-			encoderValues[index] = -1;
-		}
 
 		// zero the axes
 		zeroAllAxis();
 		// confirmation screen that they have placed the paper correctly
-		checkPaper();
+		//checkPaper();
 		displayString(12, "Press enter to start plot");
 		while(!getButtonPress(buttonAny))
 		{}
@@ -378,26 +375,26 @@ task main()
 				// calculates the encoder values of the x axis for the given row at plotted points
 				getEncoderValuesAtPoints(points, encoderValues);
 				// zero encoder of x axis so we can determine when to plot points
-				nMotorEncoder[X_AXIS] = 0;
-
-
 
 
 				// FIX THIS LATER --> NO PID RIGHT NOW
 				bool fast = false;
 				int xPow = target;
-				if(rowPlotted%2 == 0)
+				if(rowPlotted%2 == 0){
+					nMotorEncoder[X_AXIS] = 0;
 					xPow = target;
-				else
+					setXRPM(xPow);
+				}
+				else{
 					xPow = target*-1;
-
+					setXRPM(xPow);
+					while (nMotorEncoder[X_AXIS] > MAX_X_ENC){}
+					nMotorEncoder[X_AXIS] = 0;
+				}
 
 				//startTask(calculatePID);
-				setXRPM(xPow);
+				//setXRPM(xPow);
 				// set x axis to constant speed -- changes directions based on odd or even row
-
-
-
 
 				int pointNumber = 0;
 				while((nMotorEncoder[X_AXIS] < MAX_X_ENC && rowPlotted%2==0) || (rowPlotted%2==1 && !SensorValue[X_LIMIT_SWITCH]))
@@ -420,7 +417,7 @@ task main()
 						while(SensorValue[Z_LIMIT_SWITCH] == 0){}
 						motor[Z_AXIS] = 0;
 						if(pointNumber == POINTS_PER_LINE-1)
-							encoderValues[pointNumber] == -1;
+							encoderValues[pointNumber] = -1;
 						else
 							pointNumber++;
 					}
@@ -450,6 +447,8 @@ task main()
 			// do not do this if we are on the last line
 			if (rowNumber < rowsToPlot-1)
 				moveYAxis(POINT_DISTANCE); //1.2375 is because image was becoming squished //not needed
+			float estTime = 1.0*time1[T1]/(rowNumber+1)*rowsToPlot;
+			displayTime(2, estTime);
 		}
 
 		eraseDisplay();
